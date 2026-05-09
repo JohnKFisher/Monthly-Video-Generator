@@ -48,3 +48,4 @@
 ## 2026-05-08
 
 - Decision: Promote the checked-in release identity to `1.0.0 (220)` without pushing yet. Rationale: the app is in a state the user considers stable and complete enough to mark as `1.0`, and the repo's source-controlled `VERSION`/`BUILD_NUMBER` pair should reflect that milestone before any later publication step. Status: approved.
+- Decision: Treat the app as feature complete for its intended scope and shift the docs to a maintenance/polish framing. Rationale: the user considers the current workflow, export path, and product shape effectively done, with future work expected to be tweaks and refinements rather than unfinished core milestones. Status: approved.

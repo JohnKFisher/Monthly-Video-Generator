@@ -17,7 +17,7 @@ Build a desktop-first macOS app (SwiftUI + AVFoundation/PhotoKit, local-only) in
 | S1 | Folder to video | Done |
 | S2 | Effects (title + crossfades) | Done |
 | S3 | Apple Photos integration | Done |
-| S4 | Export controls | In Progress |
+| S4 | Export controls | Done |
 
 ## Milestone Exit Criteria
 
@@ -25,11 +25,13 @@ Build a desktop-first macOS app (SwiftUI + AVFoundation/PhotoKit, local-only) in
 - [x] S1 complete: recursive folder discovery, deterministic ordering, image+video render, source video audio, safe output naming, duration warning.
 - [x] S2 complete: opening title card and crossfade transitions with default behavior compatibility.
 - [x] S3 complete: read-only PhotoKit flow, month/year local-time filtering, denied/limited permission handling.
-- [ ] S4 complete: export control model/UI for codec/container/resolution/HDR/audio layout with compatibility messaging.
+- [x] S4 complete: export control model/UI for codec/container/resolution/HDR/audio layout with compatibility messaging.
 
 ## Current Status Snapshot
 
 Core app and pipeline are implemented and verified with `swift build` + `swift test`.
+
+This project is now considered feature complete for its intended job. Future work is expected to be maintenance, polish, and narrowly scoped improvements rather than unfinished milestone delivery.
 
 Implemented now:
 - Desktop SwiftUI app with folder/photos source selection.
@@ -55,12 +57,12 @@ Implemented now:
 - Shared `.dmg` packaging now lives in `scripts/create_dmg.sh`, and first-pass GitHub Actions build/release workflows are checked in for initial GitHub publication.
 - README/license/About-style surfaces now disclose the personal-use nature of the app, MIT licensing, current ad-hoc-signed/non-notarized macOS distribution state, and an optional repository link that stays hidden until configured.
 
-Open for S4 completion:
-- Migrate renderer to newer non-deprecated AVFoundation export APIs.
+Future refinement areas:
+- Migrate renderer to newer non-deprecated AVFoundation export APIs when it is worth the churn.
 - Continue tightening renderer-option parity where settings remain advisory outside HDR constraints.
-- Refine progress UX with ETA prediction and stronger cancellation affordances for long HDR jobs.
-- Before finalizing export defaults, validate representative `4K60 / HEVC / Balanced` output sizes for the Plex -> Infuse -> Apple TV 4K workflow and reduce the balanced target if files are unreasonably large.
-- After the cleaned first push lands on GitHub, verify the first remote `build.yml` and `release.yml` runs end-to-end and fix any CI-only packaging drift without changing render behavior.
+- Refine long-job progress UX with better ETA, cancellation, and recovery ergonomics.
+- Keep validating representative `4K60 / HEVC / Balanced` output sizes against real playback needs before any future export-default change.
+- Preserve the protected render/output path and prefer small reliability improvements over broader redesign.
 
 Operational updates after first packaged run:
 - Added repeatable `.app` bundling script so each build produces a Finder app bundle.
@@ -206,6 +208,7 @@ Operational updates after first packaged run:
 
 ## Changes Since Last Update
 
+- 2026-05-08: Marked the app as feature complete for its intended scope, promoted Stage 4 to done, bumped the checked-in release identity to `1.0.0 (220)`, and shifted the docs toward maintenance/polish framing instead of open milestone delivery.
 - 2026-04-21: Modernized the app shell into a more Mac-native shape without changing the render pipeline: added a real `WindowGroup(..., id:)` main scene, command menus and keyboard shortcuts, a dedicated Settings scene, an About window, toolbar-owned primary actions, bookmark-backed output-folder persistence with fallback, extracted AppKit file-panel/Finder helpers, and split the main UI into left/right workflow panes for input/style/export versus queue/status/warnings.
 - 2026-04-21: The first real GitHub Actions push for `1.2.0 (207)` started both `build.yml` and `release.yml`, but both failed immediately on `macos-14` because the runner defaulted to Swift `5.10` while the package requires Swift tools `6.0`; both workflows now target `macos-15` for the rerun.
 - 2026-04-21: Bumped the checked-in release identity to `1.2.0 (207)` as the first intended public GitHub release line after the pre-push history cleanup, with the next step being remote Actions verification on the real `origin/main` push.

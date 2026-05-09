@@ -5,93 +5,37 @@ Current version/build:
 - Latest checked-in build identity: `220`
 
 Current overall status:
-- The app is usable now for local folder-based and Apple Photos-based monthly video exports, and the current release keeps the SDR-source highlight blowout fix for HDR exports by correcting the SDR-to-HLG uplift nominal peak from 1000 to 400 nits, so all SDR sources (old JPEGs, modern JPEGs, Display P3 HEICs, SDR MOVs) land at ~360 nit white in HLG playback without clipping.
-- The main workflow is now organized around a Light Table + Job Drawer surface: a large current-render theater with live snapshot/progress at the top and a compact queue drawer fixed directly below it, even when the queue is empty. Active runs focus on Current Render + Job Drawer and hide config until the run is idle or the queue is cleared.
-- The Settings and main windows have been tightened vertically, Notes & Warnings now stay minimized by default, and the About window now includes the public GitHub repository link.
-- Queue progress is split into current-item progress and completed-count queue progress, and queue runs can now pause after the current item instead of using the old HDR checkpoint pause control.
-- The bundled FFmpeg/ffprobe toolchain is now committed as validated macOS architecture slices using pinned FFmpeg 8.x static builds, and packaging fails before producing an app if either tool is missing, not launchable, or missing a requested architecture.
-- The `2.1.0` GitHub DMG was published without bundled FFmpeg because the local `third_party/ffmpeg/bin` inputs were ignored; use `2.1.1` or later for packaged HDR exports, and prefer `2.1.5` or later for correct SDR brightness in HDR exports.
-- Opening title cards now randomize per export job across the corrected `21`-variant collage-family set, including queued exports and full-year runs.
-- Fresh/reset defaults now use a `10.0s` opening title card, opening title text defaults to the active month/year such as `December 2018`, caption text defaults to `Fisher Family Videos`, and release identity now comes from the checked-in `VERSION` plus `BUILD_NUMBER` files.
-- The default Plex/Infuse HDR export now uses the bakeoff-approved `crf21-fast` final `libx265` tuning.
-- Progressive HDR final batches now make one recovery retry with conservative x265 thread settings when FFmpeg/libx265 exits before producing any output.
-- The universal app bundle now requires native execution and prioritizes `arm64`, so Apple Silicon Macs should launch the native slice instead of Rosetta.
-- HDR exports use the luma-lift LUT + HLG uplift path for all SDR sources, with `hdrSDRNominalPeak=400` so highlights are correctly preserved rather than blown out (old scanned JPEGs, modern JPEGs, Display P3 HEICs, and SDR MOVs all land at ~360 nit white without clipping).
+- Feature complete for the intended job and effectively in maintenance mode.
+- The app is ready to use for folder-based and Apple Photos-based monthly video exports.
+- Future work is expected to be tweaks, UX polish, reliability hardening, and small workflow refinements rather than major scope expansion.
 
-What is working now:
+What works now:
 - Local-only macOS app workflow with no telemetry or cloud requirement.
 - Folder source rendering for mixed photos and videos.
 - Apple Photos rendering using month/year filtering and album selection.
-- Apple Photos album rendering can span multiple months; album mode uses the earliest dated item for Plex month/year identity and the album title for auto-managed naming.
-- Mac-native shell surfaces for the main workflow, including command menus, keyboard shortcuts, toolbar-owned primary actions, a dedicated Settings window, and a dedicated About window.
-- Settings now has Style, Export, and App tabs. Style/export defaults update the next render live, and default export picker options are labeled with `(Default)`.
-- The main window shows when style/export settings differ from Plex defaults and can reset only those moved settings without changing source, folder, output name, title text, or caption.
-- Render queues show separate current-item and completed-queue progress, can pause cleanly after the current queued item, and the Job Drawer now uses a horizontal job strip plus a selected-job detail card with elapsed time, input count, output size, and output filename when available.
-- Manual opening title/caption edits stay available for the current render or queued snapshot, but they no longer persist as the next app-launch defaults.
-- Persisted default output-folder selection with bookmark-based restoration and fallback to the app's Movies folder default when a saved folder disappears.
-- Hidden serial render queue, including year-scan queue creation for non-empty Photos months.
-- Opening title cards, capture-date overlays, and crossfades.
-- Shipping randomized collage-family opening titles with `21` approved variants.
-- Deterministic collage preview selection that fills up to `10` visible photo slots and only repeats images when the source batch is too small.
-- Safe output naming and optional diagnostics logs. JSON sidecar run reports are written only when diagnostics logging is enabled.
-- Audit-only progressive HDR presentation timing rollups now record `title` / `still` / `video` clip counts plus capture-date-overlay state in diagnostics and diagnostics-gated structured run reports.
-- The Light Table now shows richer render liveness details with one clear status block and an always-visible Live Snapshot area that can capture occasional still snapshots from completed/readable render artifacts without attempting live playback.
-- The main window shows the app version/build in the Current Render header for runtime traceability.
-- Live Snapshot checks for a fresh readable artifact every 3 minutes during renders and preserves the last displayed snapshot when no newer image is available or after successful completion.
-- FFmpeg-based final exports with required bundled FFmpeg 8.x support in packaged builds.
-- Universal packaged app builds with native Apple Silicon launch metadata.
-- HDR `HEVC` output for the current Plex/Infuse/Apple TV 4K workflow.
-- Default Plex/Infuse HDR exports now ship with the `crf21-fast` final software HEVC tuning that won the local bakeoff review, with a conservative one-time retry only for zero-output final-batch libx265 startup failures.
-- SDR sources in HDR exports use the luma-lift LUT + HLG `npl=400` uplift path so SDR videos and stills stay bright enough without clipping highlights in real HLG playback.
-- Embedded MP4 metadata and named chapters for the `Family Videos` workflow.
-- Stable still-image handling through Apple/AVFoundation materialized intermediate clips.
-- HDR still-photo gain-map decoding that respects source-image orientation for affected rotated/oriented HDR photos.
-- Shared packaging scripts for `.app` and `.dmg` creation from committed source, including required bundled FFmpeg/ffprobe preflight.
-- GitHub Actions build/release workflows that build and publish from committed `VERSION` and `BUILD_NUMBER` changes on `main`.
-- About-style repository link plumbing is configured for the public GitHub repository.
-
-What is partially implemented:
-- Stage 4 export controls are in place, but some advanced choices are still constrained by renderer/backend reality.
-- Progress reporting exists and is materially better than before, including separate queue/current-item progress and a low-frequency live snapshot inspector, but the longest HDR jobs still need a more polished ETA/cancellation experience.
-- Resumable HDR execution exists for large jobs, but the UX around recovery remains technical.
-- The window shell is materially more Mac-native now, but it is still a single primary window backed by one large render-oriented view model; more shell/controller splitting remains possible if future work justifies the churn.
-- The audit-only progressive presentation timing data is in place, but no still/title fast path earned promotion and the protected export path remains intentionally conservative.
-
-What is not implemented yet:
-- Final S4 completion and sign-off.
-- Migration away from older AVFoundation export APIs where newer non-deprecated options are preferred.
-- A newer still-image fast path that is both faster and trustworthy enough to replace the stable materialized-clip path on `main`.
-- A user-facing selector or favorites system for opening-title treatments.
+- Album exports can span multiple months; the app uses the earliest dated item for Plex month/year identity and the album title for auto-managed naming.
+- Light Table + Job Drawer export workflow with queue support and pause-after-current-item behavior.
+- Settings for style/export defaults plus per-render title and caption editing.
+- Plex/Infuse-oriented HDR HEVC exports with the current bundled FFmpeg/ffprobe packaging path.
+- Packaged universal app builds that prefer native Apple Silicon execution.
+- About window with copyright credit and a link to the public GitHub repository.
 
 Known limitations and trust warnings:
-- The stable still-image path is intentionally conservative and can be slow because it materializes stills into intermediate `.mov` clips before final assembly.
-- Large HDR `HEVC` exports can take a long time and use substantial CPU, memory, disk, and temporary storage.
-- Apple Photos exports depend on Photos permissions and can be affected by PhotoKit/iCloud materialization latency.
-- The new `crf21-fast` HDR default was approved from local bakeoff artifacts, but especially demanding motion-heavy material may still justify future spot checks before pushing compression further.
-- The conservative final-batch retry is intentionally narrow: it only runs after a zero-output `libx265` startup failure, so it does not protect against every possible late encode or packaging failure.
-- The chosen randomized opening-title treatment is recorded in diagnostics-gated JSON run reports, not surfaced in the main UI yet.
+- Large HDR exports can still take a long time and use substantial CPU, memory, disk, and temporary storage.
+- Apple Photos exports depend on Photos permissions and can be slowed by PhotoKit/iCloud materialization.
+- The still-image path is intentionally conservative and can be slower than a more aggressive implementation.
+- The HDR recovery/resume path exists, but parts of that UX are still somewhat technical.
 - Packaged builds are ad-hoc signed and not notarized, so downloaded copies may still require Finder `Open` or `System Settings -> Privacy & Security -> Open Anyway`.
-- The current bundle identifier remains mixed-case (`com.jkfisher.MonthlyVideoGenerator`) pending a separate migration decision; it was intentionally not renamed during this alignment pass.
 
 Setup/runtime requirements:
 - macOS 15-class environment for the current SwiftPM/app workflow.
-- Committed macOS FFmpeg/ffprobe 8.x slices packaged into the app for the preferred export path.
 - Photos permission for Apple Photos exports.
 - Enough free disk space for temporary intermediates and final exports.
 
-Important operational risks:
-- Interrupting a long HDR export can leave behind temporary or resumable artifacts until cleanup runs.
-- Photos-backed exports may spend significant time preparing media before visible output appears.
-- Live Snapshot is opportunistic: it waits for completed/readable artifacts and may show a waiting message for long stretches during stages where only active encoder output exists.
-- The app is safest when treated as local-only and single-user; it is not designed around shared/networked coordination.
-
 Recommended next priorities:
-- Manually smoke-test the new Mac shell: menus, keyboard shortcuts, Settings, About window, output-folder persistence, and the split main-window workflow with real exports.
-- Manually smoke-test several real exports and confirm the randomized collage-family openers stay readable and free of hollow photo-box artifacts.
-- Spot-check the new `crf21-fast` default on a few real-world 4K60 HDR exports before pushing to even higher compression.
-- Improve progress/cancel/resume UX for long-running FFmpeg/HDR jobs.
-- Add a lightweight inspectable UI hint or export-summary note for which title treatment was chosen, if that would help review iteration.
-- Keep future performance work tightly scoped to output-identical candidates unless a new bakeoff path is explicitly approved again.
+- Keep manual smoke checks around real exports whenever a meaningful render or packaging change lands.
+- Prefer small polish and reliability passes over broad architectural churn.
+- Treat render/color/HDR/output behavior as protected unless a future change is explicitly worth the risk.
 
 Most recent durable known-good anchor:
 - `known-good/20260320-v1-1-0-collage-titles`

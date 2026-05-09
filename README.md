@@ -1,270 +1,119 @@
 # Monthly Video Generator
 
-Monthly Video Generator is a local-only macOS app that builds slideshow videos from media in folders and Apple Photos.
+Monthly Video Generator is a local-only macOS app for turning family photos and videos into monthly slideshow movies.
 
-This is a personal-use, hobby, vibe-coded project built primarily to satisfy my own workflow. If it happens to be useful to anyone else, that's incidental. It is released under the MIT license with no warranties, support commitments, stability guarantees, or roadmap promises beyond what the code and docs honestly say today.
+It works with either regular folders or Apple Photos, and it is built around an Apple-centric workflow: macOS, Apple Photos, Plex/Infuse metadata, and HDR-capable playback.
 
-## Distribution Note
+## Project Status
 
-Packaged builds are currently ad-hoc signed for local distribution testing and are **not notarized**. That improves compatibility, but it does not remove macOS trust prompts for downloaded copies.
+Feature complete personal project.
+
+The app is now at `1.0.0` and I consider it feature complete for its intended job. I will probably keep making tweaks, quality-of-life improvements, and small fixes over time, but I am not treating it as an open-ended platform rewrite.
+
+Packaged releases are the intended way to use it.
+
+## What It Does
+
+- Builds monthly videos from mixed photos and videos.
+- Works from either folders or Apple Photos.
+- Supports album-based Apple Photos exports, including mixed-month albums.
+- Adds title cards, crossfades, captions, and capture-date overlays.
+- Queues multiple exports and can pause after the current job.
+- Produces Plex-friendly MP4 metadata and chapter markers for the current workflow.
+- Ships with the HDR export path I actually use, including bundled FFmpeg/ffprobe in packaged builds.
+
+## Current Shape
+
+The app is built around a large current-render view plus a compact job drawer underneath it.
+
+What is stable right now:
+
+- Folder-based rendering.
+- Apple Photos month/year rendering.
+- Apple Photos album rendering.
+- Queue-based export workflow.
+- Settings for style and export defaults.
+- HDR HEVC exports for the current Plex/Infuse/Apple TV 4K setup.
+- Local-only operation with no telemetry or cloud service dependency.
+
+Known rough edges:
+
+- Large HDR exports can be slow and resource-heavy.
+- Apple Photos exports can spend a while materializing media before visible progress shows up.
+- Packaged builds are ad-hoc signed, not notarized.
+- Some of the long-running HDR recovery/resume behavior is functional but still a bit technical in feel.
+
+## Distribution Notes
+
+Packaged builds are currently ad-hoc signed for local distribution and are **not notarized**.
+
+That helps, but it does not remove macOS trust prompts for downloaded copies.
 
 If macOS blocks launch:
 
 1. Try opening the app once from Finder.
-2. Then either Control-click the app in Finder and choose `Open`, or go to `System Settings -> Privacy & Security` and choose `Open Anyway`.
+2. If needed, Control-click the app and choose `Open`.
+3. Or go to `System Settings -> Privacy & Security` and choose `Open Anyway`.
 
-If I later set up full Developer ID signing and notarization, the docs and release workflow will say so explicitly.
+If full Developer ID signing and notarization are added later, the docs and release workflow will say so explicitly.
 
-## Safety and Workflow
+## Build From Source
 
-This project follows a strict milestone workflow:
+Minimum working assumption: macOS 15 with Swift installed.
 
-1. Milestone updates are required when a stage gate is completed or behavior/scope/decisions materially change.
-2. `docs/LIVING_PLAN.md` must be updated before claiming milestone completion.
-3. Milestone checkpoint commits/tags must include the living document update.
-4. Work is not complete unless the living document reflects current truth.
-
-## Build
+Build the package:
 
 ```bash
 swift build
 ```
 
-## Build `.app` Bundle
-
-```bash
-./scripts/build_app.sh
-```
-
-This creates:
-
-- `dist/Monthly Video Generator.app`
-
-The build now produces a release `.app` bundle, generates a custom macOS
-`AppIcon.icns` from the repo-local Swift icon renderer in
-`scripts/generate_app_icon.swift`, packages SwiftPM resource bundles in
-`Contents/Resources`, embeds the required Swift runtime libraries in
-`Contents/Frameworks`, and ad-hoc signs the final app for local distribution
-testing.
-
-By default the script builds a universal app (`arm64` + `x86_64`) and writes
-Launch Services metadata that requires native execution, so Apple Silicon Macs
-use the `arm64` slice instead of Rosetta. Override architectures when needed:
-
-```bash
-APP_ARCHS="arm64" ./scripts/build_app.sh
-```
-
-Packaged builds use the repo-tracked `VERSION` and `BUILD_NUMBER` files as the source of truth for `CFBundleShortVersionString` and `CFBundleVersion`. `./scripts/build_app.sh` packages the current committed release identity and does **not** mutate tracked version files as a side effect.
-
-Optional signing override for a real certificate:
-
-```bash
-CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" ./scripts/build_app.sh
-```
-
-## Prepare A Release Bump
-
-When you want a new publishable version, bump the checked-in release identity first:
-
-```bash
-./scripts/prepare_release.sh
-```
-
-That increments the patch version in `VERSION` and the integer build number in `BUILD_NUMBER` together. Review and commit those file changes before packaging or pushing.
-
-## Create A `.dmg`
-
-After the `.app` exists:
-
-```bash
-./scripts/create_dmg.sh
-```
-
-This creates a versioned DMG in `dist/`, named from the checked-in `VERSION` and `BUILD_NUMBER`.
-
-## GitHub Release Flow
-
-This repo uses two GitHub Actions workflows for shipping from committed source:
-
-- `build.yml` builds, tests, packages, and uploads macOS artifacts from committed source.
-- `release.yml` treats a committed version/build bump on `main` as the publish signal and creates or updates the matching GitHub Release.
-
-The release workflow publishes the DMG built from committed source and keeps distribution notes honest: ad-hoc signing is supported now, notarization is not.
-
-## Bundled FFmpeg For Final Export
-
-Release packaging requires the committed FFmpeg/ffprobe slices under
-`third_party/ffmpeg/darwin-arm64` and `third_party/ffmpeg/darwin-x64`.
-`./scripts/build_app.sh` fails before packaging if the bundle is missing, cannot
-launch, or does not include the requested app architectures.
-
-The current committed bundle uses pinned OSXExperts static macOS builds:
-FFmpeg/FFprobe `8.1` for Apple Silicon and FFmpeg/FFprobe `8.0` for Intel.
-`third_party/ffmpeg/PROVENANCE.txt` records the exact source URLs and checksums.
-
-To refresh a local FFmpeg/ffprobe pair under ignored `third_party/ffmpeg/bin`:
-
-```bash
-FFMPEG_BUNDLE_URL="https://example.com/ffmpeg-arm64-gpl.zip" \
-FFMPEG_BUNDLE_SHA256="<sha256>" \
-[FFPROBE_BUNDLE_URL="https://example.com/ffprobe-arm64"] \
-[FFPROBE_BUNDLE_SHA256="<sha256>"] \
-./scripts/fetch_ffmpeg_bundle.sh
-```
-
-For strict version matching, set both `FFPROBE_BUNDLE_URL` and `FFPROBE_BUNDLE_SHA256`
-from the same release/source as `FFMPEG_BUNDLE_URL`.
-
-The fetch helper is useful for local experiments, but the normal release bundle
-comes from the committed macOS architecture slices. After refreshing those
-committed slices, verify the bundle, update `third_party/ffmpeg/PROVENANCE.txt`,
-and run:
-
-```bash
-./scripts/build_app.sh
-```
-
-The binaries are copied into:
-
-- `dist/Monthly Video Generator.app/Contents/Resources/FFmpeg/`
-
-See:
-
-- `docs/THIRD_PARTY.md`
-
-## Inspect And Edit Plex MP4 Metadata
-
-These helper scripts help inspect and rewrite metadata on the app's Plex-oriented MP4 exports.
-
-Current exports write:
-
-- Plex-facing tags such as `title`, `show`, `season_number`, `episode_sort`, `episode_id`, `description`, `synopsis`, and `comment`
-  into standard MP4/iTunes-style metadata atoms so Plex is more likely to honor the embedded episode title
-- Named chapters on final `MP4` exports, including the opening title card plus one capture-date day chapter per day bucket
-- Standard provenance tags `software`, `version`, and `information`
-
-Inspect an export:
-
-```bash
-./scripts/show_metadata.sh "/path/to/video.mp4"
-```
-
-That default view now includes a `[Chapters]` section when the file contains embedded chapter titles.
-
-Force JSON output via `ffprobe`:
-
-```bash
-./scripts/show_metadata.sh --json "/path/to/video.mp4"
-```
-
-Rewrite metadata without re-encoding. This always writes a new file, refuses to overwrite an existing output, and supports `--dry-run`. The retag script can also update `software`, `version`, `information`, and repeated `--custom key=value` entries:
-
-```bash
-./scripts/retag_mp4.sh \
-  --input "/path/to/input.mp4" \
-  --output "/path/to/output.mp4" \
-  --title "March 2026" \
-  --show "Family Videos" \
-  --season-number 2026 \
-  --episode-sort 399 \
-  --episode-id "S2026E0399" \
-  --date 2026 \
-  --description-all "Fisher Family Monthly Video for March 2026" \
-  --genre "Family"
-```
-
-## Default Export Profile (Plex + Infuse on Apple TV 4K)
-
-New default export profile for fresh installs (existing saved preferences are preserved):
-
-- Container: `MP4`
-- Video: `HEVC` (`hvc1` Main10 on HDR path)
-- Frame rate: `Smart` (`30 fps` unless any selected video is `>= 50 fps`, then `60 fps`)
-- Resolution: `Smart` (smallest `16:9` tier that fits all selected media, maximum `4K`)
-- Dynamic range: `HDR` (HLG)
-- Audio: `AAC Smart` (`Mono` unless any selected video needs `Stereo` or `5.1`)
-- Bitrate mode: `Balanced`
-- FFmpeg engine: `Bundled Preferred` (asks before falling back to system FFmpeg)
-- HDR HEVC Encoder: `Default` (`libx265` first, then `hevc_videotoolbox` if required)
-
-Notes:
-
-- In HDR mode, codec selection is constrained to effective renderer behavior (`HEVC`), but audio remains selectable (`Mono`, `Stereo`, `5.1`, `Smart`).
-- In HDR mode, `HDR HEVC Encoder` can stay on `Default` for the current quality-first order or switch to `VideoToolbox` for faster hardware HEVC; explicit `VideoToolbox` selection fails if the chosen FFmpeg binary does not provide `hevc_videotoolbox`.
-- SDR and HDR final exports both use the FFmpeg backend; still/title intermediate clips are still generated locally with AVFoundation.
-- SDR exports that include HDR source videos now apply FFmpeg HDR-to-SDR tone mapping per affected video clip; HLG source videos use a retuned high-nominal-peak SDR conversion path before `BT.709` output so bright iPhone highlights land closer to the source look instead of clipping or washing out.
-- In Apple Photos mode, Smart fps may inspect/download selected videos during render prep to decide between `30 fps` and `60 fps`, then reuse that materialized asset during export.
-- In Apple Photos mode, Smart audio may inspect/download selected videos during render prep to choose `Mono`, `Stereo`, or `5.1`, and uninspectable videos fall back toward `5.1` to avoid dropping channels.
-- Title cards are rendered at the resolved output size for both fixed-tier and Smart exports.
-- Use the app's `Reset to Plex Defaults` action to apply this profile to an existing installation.
-
-## Temporary Testing Controls
-
-Current temporary test-only app behavior:
-
-- The Output name field auto-generates a testing filename from the selected `Resolution`, `FPS`, `Range`, and `Audio`:
-  `Testing - S2026E<unix epoch> - <Resolution> - <FPS>fps - <Range> - <Audio>`
-- The field stays auto-managed until edited manually. `Use Auto Name` / `Regenerate` restores the temporary generated format.
-
-## Known-Good Rollback
-
-Current durable known-good anchor:
-
-- `known-good/20260320-v1-0-4-hdr-still-fix`
-
-Current release checkpoint:
-
-- `checkpoint/20260320-v1-0-4`
-
-Previous durable known-good anchor:
-
-- `known-good/20260320-stable-rollback`
-
-Older legacy checkpoint anchors:
-
-- `checkpoint/20260310-known-good-v0-9-1`
-- `checkpoint/20260310-known-good-v0-9-0`
-- `checkpoint/20260309-known-good-v0-7-0`
-- `checkpoint/20260308-known-good-v0-6-0`
-- `checkpoint/20260307-known-good-v0-5-0`
-
-Pre-FFmpeg-pivot rollback checkpoint:
-
-- `checkpoint/20260304-known-good-pre-ffmpeg-pivot`
-
-Rollback commands for current known-good:
-
-```bash
-git fetch --tags
-git status
-git checkout -b codex/recover-known-good-v1-0-4 known-good/20260320-v1-0-4-hdr-still-fix
-```
-
-If you already have local changes you want to keep before rolling back, stash them first:
-
-```bash
-git stash push -u -m "pre-rollback safety stash"
-```
-
-To inspect the exact checkpoint without creating a branch:
-
-```bash
-git checkout known-good/20260320-v1-0-4-hdr-still-fix
-```
-
-Durable rollback anchors now use the `known-good/*` tag namespace. Older `checkpoint/...known-good...` tags remain as historical references, but new releases should prefer `known-good/*` for long-lived rollback points.
-
-Build numbers now represent successful packaged app builds, not timestamps. Older exports and logs still contain the earlier timestamp-style build identifiers and are intentionally left unchanged.
-
-## Test
+Run tests:
 
 ```bash
 swift test
 ```
 
-## Run
+Run the app from source:
 
 ```bash
 swift run MonthlyVideoGeneratorApp
 ```
+
+Build a packaged `.app` bundle:
+
+```bash
+./scripts/build_app.sh
+```
+
+Create a `.dmg` from that app bundle:
+
+```bash
+./scripts/create_dmg.sh
+```
+
+The packaged app build uses the checked-in `VERSION` and `BUILD_NUMBER` files as the source of truth for the app version/build, and the packaging scripts do not silently mutate them.
+
+## Release Versioning
+
+When I want a new publishable release identity, I use:
+
+```bash
+./scripts/prepare_release.sh
+```
+
+That bumps the checked-in patch version and build number together. Actual publication still depends on committing and pushing those changes.
+
+This repo also uses committed bundled FFmpeg/ffprobe slices for packaged builds. If you are digging into that part of the app, see [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md).
+
+## AI Assistance
+
+Like most of my recent projects, this repo was built with heavy AI assistance using tools like Codex and Claude.
+
+The workflow, decisions, and verification are still grounded in the real app and real exports, not just generated code.
+
+## More Context
+
+- Current project status: [docs/WHERE_WE_STAND.md](docs/WHERE_WE_STAND.md)
+- HDR/colorspace reference: [docs/HDR_COLOR_REFERENCE.md](docs/HDR_COLOR_REFERENCE.md)
+- Third-party tooling notes: [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md)
+- License: [LICENSE](LICENSE)
