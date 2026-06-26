@@ -10,3 +10,5 @@ Read this file when the task touches installation instructions, distribution not
 ## About Screen
 
 - About Screen of all apps must give copyright credit to "John Kenneth Fisher" and include a clickable link to the public GitHub page if one exists.
+
+- About Screen of all apps must contain proper third-party acknowledgments, dependency licenses when required, and bundled asset attributions when required.

@@ -12,8 +12,8 @@ Read this file when the task touches Apple platforms, Swift, SwiftUI, AppKit, UI
 ## Apple App Identity and Bundle IDs
 
 - Use stable reverse-DNS bundle identifiers for Apple app targets.
-- Default personal namespace: `com.jkfisher`
-- Default pattern: `com.jkfisher.<appname>`
+- Default personal namespace: `com.sidelarklabs`
+- Default pattern: `com.sidelarklabs.<appname>`
 - Use lowercase only. Prefer short, readable app names in identifiers. Avoid spaces, hyphens, and generic names like `test` or `demo`.
 - Treat bundle identifiers as durable app identity. Do not rename them casually after a project has been built, signed, distributed, or connected to capabilities/services.
 - If a task adds or changes bundle IDs, targets, app extensions, or capability-bound identifiers, call that out explicitly in the plan and ask first when the change is user-visible or compatibility-relevant.

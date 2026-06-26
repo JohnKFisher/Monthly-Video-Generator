@@ -333,26 +333,72 @@ For projects with meaningful versioning, milestone releases, or durable rollback
 - Do not let it become marketing copy, vague filler, or a changelog dump.
 - Update it at session end if the project state changed.
 
-## Git Workflow and Recovery
+## Git / Versioning Safety
 
-- Default branch strategy is commit-to-main unless I specify otherwise. Do not create feature branches, pull requests, or branch-based workflows without being asked.
-- Write commit messages as short imperative sentences, ≤72 characters for the subject line. e.g. `Add login screen`, `Fix empty CSV export crash`. Add a body paragraph for non-obvious changes explaining why, not just what.
-- At session end, commit completed work with a clear message. Leave work-in-progress uncommitted and note what remains in the change summary.
-- If no baseline commit exists, the Ask-First Gate applies before material edits.
-- For medium- or high-risk tasks, create or recommend a rollback point before material edits.
-- Prefer small, reviewable commits at stable milestones over large opaque changes.
-- History rewrites, resets, and destructive git actions require Ask-First approval.
-- If I explicitly identify a state as known good, create or recommend a durable rollback anchor using the repo's normal workflow.
-- Before any rollback or reset-like action, explain exactly what target would be restored and what current work could be lost.
+- Personal/unpublished projects may work directly on `main`.
+- Published or release-managed projects should treat `main` as stable/shippable.
+- Do not create, delete, switch, merge, push, tag, reset, rebase, cherry-pick, or create worktrees unless explicitly instructed.
+- Do not create Codex-managed temporary worktrees unless explicitly approved.
+- Before material edits, report:
+  - current working directory,
+  - current branch,
+  - `git status --short`.
+- Read `docs/agent-rules/git-workflow.md` when tasks touch:
+  - branches,
+  - worktrees,
+  - commits,
+  - pushes,
+  - releases,
+  - tags,
+  - rollback,
+  - versioning,
+  - CI/release flow,
+  - App Store/TestFlight/distribution workflows.
+  
+## Working Changelog
 
-## Versioning
+When making user-facing changes, maintain a working changelog file that can later be used to draft the public release notes.
 
-- Use an ever-increasing build number for every build across the life of the project.
-- Increment the patch version automatically for each build by default.
-- Do not bump the minor or major version without my explicit approval. Bumps can be suggested with brief reasoning, but not applied automatically.
-- App marketing version and build number must come from source-controlled files, not from local caches, `.build/`, DerivedData, or other untracked machine-specific state. Before any release build, report the exact version that will be produced and stop if local state could alter it. Update versioning files in the same commit as the build change.
-- Prefer deterministic versioning that reproduces the same app version/build from the same committed source.
-- For projects that publish through CI, prefer workflows where a pushed checked-in version bump on `main` automatically creates or updates the corresponding GitHub Release. Do not require a separate manual tag push unless the project brief or decision log explicitly prefers tag-driven releases.
+- Write entries to docs/WORKING_CHANGELOG.md.
+- Treat this file as internal release-note source material, not polished public copy.
+- Update it as changes are made, not only at the end of a release.
+- Use moderately non-technical language: clear enough for a normal user to understand, but still specific enough that the change can be traced back to the actual work.
+- Focus on what changed for the user, what is safer, clearer, faster, more reliable, or easier to understand.
+- Avoid implementation details unless they are needed to explain the user impact.
+- Do not include commit hashes, branch names, internal refactor notes, code architecture details, or speculative future plans.
+- Group related small fixes into a single entry when they are part of the same user-facing improvement.
+- Prefer plain language such as “Roll Call now warns you before importing possible duplicate roster rows” instead of “Added duplicate-row validation to CSV parsing pipeline.”
+- If a change is purely internal and has no user-visible effect, either omit it or record it under an “Internal / Maintenance” section only if it may matter during release review.
+- If a change affects existing users, note whether it changes behavior, protects existing data, improves recovery, or reduces confusion.
+- If a change might need special mention in the public changelog, mark it with [public candidate].
+- If a change is uncertain, incomplete, or still being tested, mark it with [needs review].
+
+Use this format:
+
+"# Working Changelog
+
+Internal notes for building public-facing changelogs. Keep entries understandable to non-technical users, but not fully polished.
+
+## Unreleased
+
+### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- 
+
+### Reliability / Data Safety
+- 
+
+### Internal / Maintenance
+- "
+
+When completing a task, review whether the work should add or update an entry in docs/working-changelog.md. If the changelog file does not exist yet, create it using the format above.
+
+
 
 ## Performance, Reliability, and Output Quality
 
@@ -457,4 +503,6 @@ When in doubt on safety, privacy, data integrity, destructive operations, permis
   
 - `docs/agent-rules/local-rtk.md`
   - Read only when `rtk` is available on PATH or the user asks about RTK/token-compressed command output.
-
+  
+- `docs/agent-rules/third-party-dependencies-media-assets.md`
+  - Read this file when the task touches Third-Party dependencies, media and assets.
