@@ -4,7 +4,18 @@ public enum OutputPathResolver {
     public static func resolveUniqueURL(target: OutputTarget, container: ContainerFormat) throws -> URL {
         let fileManager = FileManager.default
         try fileManager.createDirectory(at: target.directory, withIntermediateDirectories: true)
+        return resolveUniqueURL(target: target, container: container, fileManager: fileManager)
+    }
 
+    public static func previewUniqueURL(target: OutputTarget, container: ContainerFormat) -> URL {
+        resolveUniqueURL(target: target, container: container, fileManager: .default)
+    }
+
+    private static func resolveUniqueURL(
+        target: OutputTarget,
+        container: ContainerFormat,
+        fileManager: FileManager
+    ) -> URL {
         let sanitizedBase = sanitizedFilename(target.baseFilename)
         let ext = container.fileExtension
         var candidate = target.directory.appendingPathComponent("\(sanitizedBase).\(ext)")

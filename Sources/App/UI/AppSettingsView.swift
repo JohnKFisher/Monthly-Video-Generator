@@ -38,6 +38,10 @@ struct AppSettingsView: View {
     private var styleTab: some View {
         VStack(alignment: .leading, spacing: 14) {
             settingsSection("Opening Title") {
+                Text("Changes in Settings save automatically.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
                 Toggle("Include opening title card", isOn: $viewModel.includeOpeningTitle)
 
                 MainWindowSliderRow(
@@ -85,6 +89,10 @@ struct AppSettingsView: View {
                 Text("Advanced Export")
                     .font(.headline)
 
+                Text("Changes here save automatically and affect the next render or queue snapshot.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
                 MainWindowAdvancedExportSettingsView(viewModel: viewModel)
             }
             .padding(.horizontal, 24)
@@ -112,7 +120,7 @@ struct AppSettingsView: View {
                     }
                 }
 
-                Text("This folder becomes the launch default and is updated when you choose a new output folder in the main window.")
+                Text("Changes save automatically. This folder becomes the launch default and is updated when you choose a new output folder in the main window.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

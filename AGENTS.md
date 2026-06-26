@@ -396,7 +396,7 @@ Internal notes for building public-facing changelogs. Keep entries understandabl
 ### Internal / Maintenance
 - "
 
-When completing a task, review whether the work should add or update an entry in docs/working-changelog.md. If the changelog file does not exist yet, create it using the format above.
+When completing a task, review whether the work should add or update an entry in docs/WORKING_CHANGELOG.md. If the changelog file does not exist yet, create it using the format above.
 
 
 

@@ -4,7 +4,7 @@ import Foundation
 
 // Despite the legacy type name, this renderer now handles both SDR and HDR
 // final export paths so the app can share one FFmpeg backend.
-final class FFmpegHDRRenderer {
+final class FFmpegHDRRenderer: @unchecked Sendable {
     private final class CallbackRelay: @unchecked Sendable {
         private let diagnostics: (String) -> Void
         private let progress: (Double) -> Void

@@ -93,6 +93,10 @@ struct MainWindowCurrentJobCard: View {
                 .font(.callout)
 
             MainWindowCaption(text: "Output: \(viewModel.currentRenderOutputNamePreview)")
+
+            if let collisionDescription = viewModel.currentRenderOutputCollisionDescription {
+                MainWindowCaption(text: collisionDescription)
+            }
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -189,12 +193,13 @@ struct MainWindowQueueJobTile: View {
 
 struct MainWindowQueueJobDetailCard: View {
     let job: MainWindowViewModel.QueuedRenderJob
+    let isExplicitlySelected: Bool
     let removeAction: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(job.state == .running ? "Current Job" : "Selected Job")
+                Text(detailTitle)
                     .font(.subheadline.weight(.semibold))
 
                 Text(job.state.displayLabel)
@@ -256,6 +261,13 @@ struct MainWindowQueueJobDetailCard: View {
         #else
         Color.secondary.opacity(0.08)
         #endif
+    }
+
+    private var detailTitle: String {
+        if job.state == .running {
+            return "Current Job"
+        }
+        return isExplicitlySelected ? "Selected Job" : "Next Job for Review"
     }
 
     private func queueStateColor(_ state: MainWindowViewModel.QueuedRenderJobState) -> Color {

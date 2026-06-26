@@ -53,21 +53,31 @@ Known rough edges:
 
 ## Distribution Notes
 
-Packaged builds are currently ad-hoc signed for local distribution and are **not notarized**.
+Local packaged builds are ad-hoc signed by default. Release builds for other people should be signed with a Developer ID Application certificate, notarized with Apple, and stapled before distribution.
 
-That helps, but it does not remove macOS trust prompts for downloaded copies.
+Developer ID release flow:
 
-If macOS blocks launch:
+```bash
+export DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer
+export CODESIGN_IDENTITY="Developer ID Application: John Fisher (5Y9T5WZ4J3)"
 
-1. Try opening the app once from Finder.
-2. If needed, Control-click the app and choose `Open`.
-3. Or go to `System Settings -> Privacy & Security` and choose `Open Anyway`.
+./scripts/build_app.sh
+./scripts/create_dmg.sh
+xcrun notarytool submit "dist/Monthly-Video-Generator-v1.0.0-build-220-macOS-universal.dmg" \
+  --keychain-profile monthly-video-generator-notary \
+  --wait
+xcrun stapler staple "dist/Monthly-Video-Generator-v1.0.0-build-220-macOS-universal.dmg"
+```
 
-If full Developer ID signing and notarization are added later, the docs and release workflow will say so explicitly.
+If a build is not Developer ID signed and notarized, macOS may still require Finder `Open`, Control-click `Open`, or `System Settings -> Privacy & Security -> Open Anyway`.
 
 ## Build From Source
 
-Minimum working assumption: macOS 15 with Swift installed.
+Minimum working assumption: macOS 15 with a full Xcode developer directory selected, not just the Command Line Tools. On machines with more than one Xcode installed, set `DEVELOPER_DIR` explicitly for repeatable builds; for example:
+
+```bash
+export DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer
+```
 
 Build the package:
 
@@ -79,6 +89,12 @@ Run tests:
 
 ```bash
 swift test
+```
+
+If the local `.build` directory has stale code-signing or toolchain artifacts, use a fresh scratch path instead of treating that as an app failure:
+
+```bash
+swift test --scratch-path /private/tmp/monthly-video-generator-swiftpm
 ```
 
 Run the app from source:
@@ -100,6 +116,10 @@ Create a `.dmg` from that app bundle:
 ```
 
 The packaged app build uses the checked-in `VERSION` and `BUILD_NUMBER` files as the source of truth for the app version/build, and the packaging scripts do not silently mutate them.
+
+For Developer ID distribution, set `CODESIGN_IDENTITY` for both `build_app.sh` and `create_dmg.sh` so the app bundle and disk image are signed before notarization.
+
+Before cutting a release for other people, do one manual smoke pass with representative folder exports, Photos exports, and a real packaged app launch. The automated tests use test doubles for Photos/iCloud behavior, so they cannot fully prove real-library materialization or permission behavior.
 
 ## Release Versioning
 

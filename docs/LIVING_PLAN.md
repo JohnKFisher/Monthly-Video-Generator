@@ -1,5 +1,7 @@
 # Monthly Video Generator Living Plan
 
+Historical note: this file records the original staged build plan and early operational history. For current release truth, use `docs/WHERE_WE_STAND.md`; for current approved decisions, use `docs/DECISIONS.md`.
+
 ## Project Summary
 
 Build a desktop-first macOS app (SwiftUI + AVFoundation/PhotoKit, local-only) in four stages:

@@ -4,6 +4,8 @@ struct MainWindowQueuePane: View {
     @ObservedObject var viewModel: MainWindowViewModel
 
     @State private var selectedQueuedJobID: MainWindowViewModel.QueuedRenderJob.ID?
+    @State private var pendingRemoval: PendingQueueRemoval?
+    @State private var isClearQueueConfirmationPresented = false
 
     private let rowSpacing: CGFloat = 8
 
@@ -18,11 +20,11 @@ struct MainWindowQueuePane: View {
                     queueFlightStrip
 
                     if let selectedQueuedJob {
-                        MainWindowQueueJobDetailCard(job: selectedQueuedJob) {
-                            if selectedQueuedJobID == selectedQueuedJob.id {
-                                selectedQueuedJobID = nil
-                            }
-                            viewModel.removeQueuedRenderJob(id: selectedQueuedJob.id)
+                        MainWindowQueueJobDetailCard(
+                            job: selectedQueuedJob,
+                            isExplicitlySelected: selectedQueuedJobID == selectedQueuedJob.id
+                        ) {
+                            pendingRemoval = PendingQueueRemoval(job: selectedQueuedJob)
                         }
                     }
                 }
@@ -37,12 +39,52 @@ struct MainWindowQueuePane: View {
                     HStack(spacing: 8) {
                         ProgressView()
                         MainWindowCaption(text: "Scanning \(viewModel.yearQueueLabelYear) for non-empty months…")
+                        Button("Cancel Scan") {
+                            viewModel.cancelSelectedYearQueueScan()
+                        }
+                        .disabled(!viewModel.canCancelYearQueueScan)
                     }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } label: {
             MainWindowSectionLabel(title: "Job Drawer", accent: MainWindowTheme.accentNavy)
+        }
+        .alert(
+            "Remove queued job?",
+            isPresented: Binding(
+                get: { pendingRemoval != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        pendingRemoval = nil
+                    }
+                }
+            )
+        ) {
+            Button("Remove Job", role: .destructive) {
+                if let pendingRemoval {
+                    if selectedQueuedJobID == pendingRemoval.id {
+                        selectedQueuedJobID = nil
+                    }
+                    viewModel.removeQueuedRenderJob(id: pendingRemoval.id)
+                }
+                pendingRemoval = nil
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Remove \(pendingRemoval?.label ?? "this job") from the queue. Completed output files are not deleted.")
+        }
+        .alert(
+            "Clear all queued jobs?",
+            isPresented: $isClearQueueConfirmationPresented,
+        ) {
+            Button("Clear Queue", role: .destructive) {
+                selectedQueuedJobID = nil
+                viewModel.clearQueuedRenderJobs()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes queued job records and result summaries. Exported video files are not deleted.")
         }
     }
 
@@ -124,7 +166,7 @@ struct MainWindowQueuePane: View {
                 .disabled(!viewModel.canStartQueue)
 
                 Button("Clear Queue") {
-                    viewModel.clearQueuedRenderJobs()
+                    isClearQueueConfirmationPresented = true
                 }
                 .disabled(!viewModel.canClearQueue)
             }
@@ -156,11 +198,21 @@ struct MainWindowQueuePane: View {
                     .disabled(!viewModel.canStartQueue)
 
                     Button("Clear Queue") {
-                        viewModel.clearQueuedRenderJobs()
+                        isClearQueueConfirmationPresented = true
                     }
                     .disabled(!viewModel.canClearQueue)
                 }
             }
+        }
+    }
+
+    private struct PendingQueueRemoval: Identifiable {
+        let id: MainWindowViewModel.QueuedRenderJob.ID
+        let label: String
+
+        init(job: MainWindowViewModel.QueuedRenderJob) {
+            id = job.id
+            label = job.outputNamePreview.isEmpty ? job.sourceSummary : job.outputNamePreview
         }
     }
 

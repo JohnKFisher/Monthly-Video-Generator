@@ -466,6 +466,7 @@ final class MainWindowViewModel: ObservableObject {
     private let nowProvider: () -> Date
     private var cancellables: Set<AnyCancellable> = []
     private var renderTask: Task<Void, Never>?
+    private var yearQueueScanTask: Task<Void, Never>?
     private var renderStatusDetail: String?
     private var queueRunContext: QueueRunContext?
     @Published private var activeRenderIdentity: ActiveRenderIdentity?
@@ -483,6 +484,7 @@ final class MainWindowViewModel: ObservableObject {
     private var liveSnapshotSessionID = UUID()
     private var liveSnapshotTask: Task<Void, Never>?
     private var lastLiveSnapshotAttemptAt: Date?
+    private var photoAlbumLoadGeneration = 0
 
     private static let defaultExportProfile = ExportProfileManager().defaultProfile()
     private static let defaultPlexShowTitle = "Family Videos"
@@ -551,6 +553,7 @@ final class MainWindowViewModel: ObservableObject {
 
     deinit {
         liveSnapshotTask?.cancel()
+        yearQueueScanTask?.cancel()
         let service = liveSnapshotService
         Task {
             await service.removeAllSnapshots()
@@ -762,6 +765,10 @@ final class MainWindowViewModel: ObservableObject {
         !isPreparingYearQueue
     }
 
+    var canCancelYearQueueScan: Bool {
+        isPreparingYearQueue
+    }
+
     var showsSelectedYearQueueAction: Bool {
         sourceMode == .photos && selectedPhotosFilterMode == .monthYear
     }
@@ -835,7 +842,7 @@ final class MainWindowViewModel: ObservableObject {
 
     var queueStatusDescription: String {
         if queuedRenderJobs.isEmpty {
-            return "Snapshot the current form into queued jobs, then start the queue when you're ready."
+            return "Add a job to freeze the current form settings, then start the queue when you're ready."
         }
 
         let completedCount = queuedRenderJobs.filter { $0.state == .completed }.count
@@ -885,6 +892,20 @@ final class MainWindowViewModel: ObservableObject {
             return activeRenderIdentityForDisplay.outputNamePreview
         }
         return queueOutputNamePreview(for: makeCurrentRenderSnapshot())
+    }
+
+    var currentRenderResolvedOutputNamePreview: String {
+        resolvedOutputNamePreview(for: makeCurrentRenderSnapshot())
+    }
+
+    var currentRenderOutputCollisionDescription: String? {
+        let snapshot = makeCurrentRenderSnapshot()
+        let requestedName = queueOutputNamePreview(for: snapshot)
+        let resolvedName = resolvedOutputNamePreview(for: snapshot)
+        guard requestedName != resolvedName else {
+            return nil
+        }
+        return "A file with that name already exists. This render will save as \(resolvedName)."
     }
 
     var currentRenderDrawerDescription: String {
@@ -1202,9 +1223,21 @@ final class MainWindowViewModel: ObservableObject {
         preparingYearQueueTargetYear = baseSnapshot.selectedYear
         statusMessage = "Scanning Photos for \(baseSnapshot.selectedYear)..."
 
-        Task {
+        yearQueueScanTask = Task {
             await queueSelectedYearRenders(from: baseSnapshot)
+            await MainActor.run {
+                self.yearQueueScanTask = nil
+            }
         }
+    }
+
+    func cancelSelectedYearQueueScan() {
+        guard canCancelYearQueueScan else { return }
+        yearQueueScanTask?.cancel()
+        yearQueueScanTask = nil
+        isPreparingYearQueue = false
+        preparingYearQueueTargetYear = nil
+        statusMessage = "Year scan cancelled."
     }
 
     func startQueue() {
@@ -1240,6 +1273,10 @@ final class MainWindowViewModel: ObservableObject {
     }
 
     func cancelRender() {
+        if isPreparingYearQueue {
+            cancelSelectedYearQueueScan()
+            return
+        }
         isCancellingRender = true
         isPauseRequested = false
         renderTask?.cancel()
@@ -1561,6 +1598,19 @@ final class MainWindowViewModel: ObservableObject {
         return generatedOutputName(for: snapshot)
     }
 
+    private func resolvedOutputNamePreview(for snapshot: QueuedRenderSnapshot) -> String {
+        let target = OutputTarget(
+            directory: snapshot.outputDirectoryURL,
+            baseFilename: queueOutputNamePreview(for: snapshot)
+        )
+        return OutputPathResolver.previewUniqueURL(
+            target: target,
+            container: snapshot.selectedContainer
+        )
+        .deletingPathExtension()
+        .lastPathComponent
+    }
+
     private func enqueueRenderSnapshot(_ snapshot: QueuedRenderSnapshot) {
         queuedRenderJobs.append(
             QueuedRenderJob(
@@ -1626,11 +1676,13 @@ final class MainWindowViewModel: ObservableObject {
 
         do {
             try await ensurePhotosAuthorizationIfNeeded()
+            try Task.checkCancellation()
 
             let targetYear = baseSnapshot.selectedYear
             var addedSnapshots: [QueuedRenderSnapshot] = []
 
             for month in months {
+                try Task.checkCancellation()
                 let monthYear = MonthYear(month: month, year: targetYear)
                 let discovered = try await photoDiscovery.discover(
                     monthYear: monthYear,
@@ -1660,7 +1712,11 @@ final class MainWindowViewModel: ObservableObject {
             let skippedCount = months.count - addedSnapshots.count
             statusMessage = "Queued \(addedSnapshots.count) month(s) for \(targetYear). Skipped \(skippedCount) empty month(s)."
         } catch {
-            statusMessage = formatErrorForDisplay(error)
+            if error is CancellationError || Task.isCancelled {
+                statusMessage = "Year scan cancelled."
+            } else {
+                statusMessage = formatErrorForDisplay(error)
+            }
         }
     }
 
@@ -2566,7 +2622,13 @@ final class MainWindowViewModel: ObservableObject {
                 presentationTimingAudits: renderResult.executionDetails?.presentationTimingAudits ?? []
             )
             let reportURL = outputURL.deletingPathExtension().appendingPathExtension("json")
-            try? runReportService.write(report, to: reportURL)
+            do {
+                try runReportService.write(report, to: reportURL)
+            } catch {
+                appendWarning(
+                    "Diagnostics JSON report could not be written to \(reportURL.path): \(formatErrorForDisplay(error))"
+                )
+            }
         }
 
         lastOutputPath = outputURL.path
@@ -2580,6 +2642,13 @@ final class MainWindowViewModel: ObservableObject {
                 renderResult: renderResult
             )
         }
+    }
+
+    private func appendWarning(_ warning: String) {
+        guard !warnings.contains(warning) else {
+            return
+        }
+        warnings.append(warning)
     }
 
     private func makeRenderCompletionSummary(
@@ -3278,7 +3347,12 @@ final class MainWindowViewModel: ObservableObject {
         guard !isLoadingPhotoAlbums else {
             return
         }
+        guard sourceMode == .photos, selectedPhotosFilterMode == .album else {
+            return
+        }
 
+        photoAlbumLoadGeneration += 1
+        let loadGeneration = photoAlbumLoadGeneration
         isLoadingPhotoAlbums = true
         defer { isLoadingPhotoAlbums = false }
 
@@ -3290,6 +3364,9 @@ final class MainWindowViewModel: ObservableObject {
         }
 
         guard status == .authorized || status == .limited else {
+            guard shouldApplyPhotoAlbumLoad(generation: loadGeneration) else {
+                return
+            }
             photoAlbums = []
             selectedPhotoAlbumID = ""
             photoAlbumsStatusMessage = "Allow Photos access to load albums."
@@ -3298,6 +3375,9 @@ final class MainWindowViewModel: ObservableObject {
 
         do {
             let discoveredAlbums = try await photoDiscovery.discoverAlbums()
+            guard shouldApplyPhotoAlbumLoad(generation: loadGeneration) else {
+                return
+            }
             photoAlbums = discoveredAlbums
             if discoveredAlbums.isEmpty {
                 selectedPhotoAlbumID = ""
@@ -3310,10 +3390,19 @@ final class MainWindowViewModel: ObservableObject {
             }
             photoAlbumsStatusMessage = ""
         } catch {
+            guard shouldApplyPhotoAlbumLoad(generation: loadGeneration) else {
+                return
+            }
             photoAlbums = []
             selectedPhotoAlbumID = ""
             photoAlbumsStatusMessage = error.localizedDescription
         }
+    }
+
+    private func shouldApplyPhotoAlbumLoad(generation: Int) -> Bool {
+        generation == photoAlbumLoadGeneration &&
+            sourceMode == .photos &&
+            selectedPhotosFilterMode == .album
     }
 
     private func enforceHDRSelectionConstraints() {

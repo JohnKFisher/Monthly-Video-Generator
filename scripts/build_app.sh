@@ -77,6 +77,8 @@ build_release_slice() {
   local triple="${arch}-apple-macosx${MINIMUM_SYSTEM_VERSION}"
   local bin_path
   local executable_path
+  local slice_dir
+  local slice_path
 
   echo "Building release slice for ${arch} (${triple})..."
   swift build -c release --product "$EXECUTABLE_NAME" --triple "$triple"
@@ -95,7 +97,11 @@ build_release_slice() {
   remove_nonportable_rpaths "$executable_path"
   ensure_rpath "$executable_path" "@executable_path/../Frameworks"
 
-  BIN_PATHS+=("$executable_path")
+  slice_dir="$PACKAGING_TEMP_DIR/build-slices/$arch"
+  slice_path="$slice_dir/$EXECUTABLE_NAME"
+  mkdir -p "$slice_dir"
+  cp "$executable_path" "$slice_path"
+  BIN_PATHS+=("$slice_path")
 }
 
 current_rpaths() {
@@ -198,7 +204,16 @@ validate_tool_launch() {
   fi
 
   if command -v lipo >/dev/null 2>&1; then
-    if ! lipo "$tool_path" -verify_arch "${required_archs[@]}" >/dev/null 2>&1; then
+    local archs
+    archs="$(lipo -archs "$tool_path" 2>/dev/null || true)"
+    for required_arch in "${required_archs[@]}"; do
+      if [[ " $archs " != *" $required_arch "* ]]; then
+        echo "Error: required bundled $label at $tool_path does not contain architectures: ${required_archs[*]}." >&2
+        lipo -info "$tool_path" >&2 || true
+        exit 1
+      fi
+    done
+    if [[ -z "$archs" ]]; then
       echo "Error: required bundled $label at $tool_path does not contain architectures: ${required_archs[*]}." >&2
       lipo -info "$tool_path" >&2 || true
       exit 1
