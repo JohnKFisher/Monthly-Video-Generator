@@ -38,7 +38,8 @@ struct FFmpegHDRProgressivePipelineBuilder {
         presentationOutputURL: (Int) -> URL,
         batchOutputURL: (Int) -> URL,
         concatListURL: () -> URL,
-        concatOutputURL: () -> URL
+        concatOutputURL: () -> URL,
+        forceProgressive: Bool = false
     ) -> FFmpegHDRProgressiveExecutionPlan? {
         guard finalPlan.dynamicRange == .hdr,
               finalPlan.videoCodec == .hevc,
@@ -47,18 +48,24 @@ struct FFmpegHDRProgressivePipelineBuilder {
         }
 
         let activationChunkPlan = activationPlanner.plan(for: finalPlan)
-        guard activationChunkPlan.requiresChunking else {
+        guard forceProgressive || activationChunkPlan.requiresChunking || finalPlan.executionFPSBakeoffVariant == .mixedCadenceVFR else {
             return nil
         }
+        let cadenceVariant = finalPlan.executionFPSBakeoffVariant
 
         let presentationPlans = finalPlan.clips.enumerated().map { index, clip in
-            FFmpegRenderPlan(
+            let presentationFrameRate = preferredPresentationFrameRate(
+                for: clip,
+                fallbackFrameRate: finalPlan.frameRate,
+                variant: cadenceVariant
+            )
+            return FFmpegRenderPlan(
                 clips: [clip],
                 transitionDurationSeconds: 0,
                 endFadeToBlackDurationSeconds: 0,
                 outputURL: presentationOutputURL(index),
                 renderSize: finalPlan.renderSize,
-                frameRate: finalPlan.frameRate,
+                frameRate: presentationFrameRate,
                 audioLayout: finalPlan.audioLayout,
                 bitrateMode: finalPlan.bitrateMode,
                 container: .mov,
@@ -69,7 +76,8 @@ struct FFmpegHDRProgressivePipelineBuilder {
                 embeddedMetadata: nil,
                 chapters: [],
                 chapterMetadataURL: nil,
-                renderIntent: .presentationIntermediate
+                renderIntent: .presentationIntermediate,
+                executionFPSBakeoffVariant: cadenceVariant
             )
         }
 
@@ -81,13 +89,17 @@ struct FFmpegHDRProgressivePipelineBuilder {
                 hasAudioTrack: true,
                 colorInfo: .hlgBT2020Intermediate,
                 sourceDescription: clip.sourceDescription,
+                sourceFrameRate: clip.sourceFrameRate,
+                preferredFrameRate: presentationPlans[index].frameRate,
                 auditInfo: clip.auditInfo
             )
         }
 
         let slices = makeAssemblySlices(
             clips: presentationClips,
-            transitionDurationSeconds: finalPlan.transitionDurationSeconds
+            transitionDurationSeconds: finalPlan.transitionDurationSeconds,
+            fallbackFrameRate: finalPlan.frameRate,
+            variant: cadenceVariant
         )
         guard !slices.isEmpty else {
             return nil
@@ -132,7 +144,9 @@ struct FFmpegHDRProgressivePipelineBuilder {
 
     private func makeAssemblySlices(
         clips: [FFmpegRenderClip],
-        transitionDurationSeconds: Double
+        transitionDurationSeconds: Double,
+        fallbackFrameRate: Int,
+        variant: FPSBakeoffVariant?
     ) -> [FFmpegAssemblySlice] {
         guard !clips.isEmpty else {
             return []
@@ -160,7 +174,12 @@ struct FFmpegHDRProgressivePipelineBuilder {
                                 durationSeconds: bodyDuration
                             )
                         ],
-                        outputDurationSeconds: bodyDuration
+                        outputDurationSeconds: bodyDuration,
+                        preferredFrameRate: preferredBodyFrameRateOverride(
+                            for: clip,
+                            fallbackFrameRate: fallbackFrameRate,
+                            variant: variant
+                        )
                     )
                 )
                 nextSequenceIndex += 1
@@ -189,7 +208,13 @@ struct FFmpegHDRProgressivePipelineBuilder {
                                     durationSeconds: bridgeDuration
                                 )
                             ],
-                            outputDurationSeconds: bridgeDuration
+                            outputDurationSeconds: bridgeDuration,
+                            preferredFrameRate: preferredBridgeFrameRateOverride(
+                                left: clip,
+                                right: nextClip,
+                                fallbackFrameRate: fallbackFrameRate,
+                                variant: variant
+                            )
                         )
                     )
                     nextSequenceIndex += 1
@@ -263,7 +288,8 @@ struct FFmpegHDRProgressivePipelineBuilder {
                             durationSeconds: segment.durationSeconds
                         )
                     },
-                    outputDurationSeconds: slice.outputDurationSeconds
+                    outputDurationSeconds: slice.outputDurationSeconds,
+                    preferredFrameRate: slice.preferredFrameRate
                 )
             }
 
@@ -290,7 +316,8 @@ struct FFmpegHDRProgressivePipelineBuilder {
                     embeddedMetadata: nil,
                     chapters: [],
                     chapterMetadataURL: nil,
-                    renderIntent: .finalBatch
+                    renderIntent: .finalBatch,
+                    executionFPSBakeoffVariant: finalPlan.executionFPSBakeoffVariant
                 )
             )
         }
@@ -305,6 +332,86 @@ struct FFmpegHDRProgressivePipelineBuilder {
             }
         }
         return orderedIndices
+    }
+
+    private func preferredPresentationFrameRate(
+        for clip: FFmpegRenderClip,
+        fallbackFrameRate: Int,
+        variant: FPSBakeoffVariant?
+    ) -> Int {
+        switch variant {
+        case .mixedCadenceVFR:
+            return preferredBodyFrameRate(for: clip, fallbackFrameRate: fallbackFrameRate, variant: variant)
+        case .stillAwareCFR:
+            if clip.auditInfo.kind == .still || clip.auditInfo.kind == .title {
+                return 5
+            }
+            return fallbackFrameRate
+        case .currentCFR, nil:
+            return fallbackFrameRate
+        }
+    }
+
+    private func preferredBodyFrameRate(
+        for clip: FFmpegRenderClip,
+        fallbackFrameRate: Int,
+        variant: FPSBakeoffVariant?
+    ) -> Int {
+        switch variant {
+        case .mixedCadenceVFR:
+            switch clip.auditInfo.kind {
+            case .still:
+                return 5
+            case .title:
+                return 30
+            case .video:
+                return standardFrameRateBucket(for: clip.sourceFrameRate, fallback: fallbackFrameRate)
+            }
+        case .stillAwareCFR, .currentCFR, nil:
+            return fallbackFrameRate
+        }
+    }
+
+    private func preferredBodyFrameRateOverride(
+        for clip: FFmpegRenderClip,
+        fallbackFrameRate: Int,
+        variant: FPSBakeoffVariant?
+    ) -> Int? {
+        guard variant != nil else {
+            return nil
+        }
+        return preferredBodyFrameRate(for: clip, fallbackFrameRate: fallbackFrameRate, variant: variant)
+    }
+
+    private func preferredBridgeFrameRateOverride(
+        left: FFmpegRenderClip,
+        right: FFmpegRenderClip,
+        fallbackFrameRate: Int,
+        variant: FPSBakeoffVariant?
+    ) -> Int? {
+        guard variant != nil else {
+            return nil
+        }
+        guard variant == .mixedCadenceVFR else {
+            return fallbackFrameRate
+        }
+        guard left.auditInfo.kind == .video, right.auditInfo.kind == .video else {
+            return 30
+        }
+        return max(
+            standardFrameRateBucket(for: left.sourceFrameRate, fallback: fallbackFrameRate),
+            standardFrameRateBucket(for: right.sourceFrameRate, fallback: fallbackFrameRate)
+        )
+    }
+
+    private func standardFrameRateBucket(for sourceFrameRate: Double?, fallback: Int) -> Int {
+        guard let sourceFrameRate, sourceFrameRate.isFinite, sourceFrameRate > 0 else {
+            return fallback
+        }
+        let buckets = [24, 25, 30, 50, 60]
+        return buckets.min { lhs, rhs in
+            abs(Double(lhs) - sourceFrameRate) < abs(Double(rhs) - sourceFrameRate)
+        } ?? fallback
     }
 }
 

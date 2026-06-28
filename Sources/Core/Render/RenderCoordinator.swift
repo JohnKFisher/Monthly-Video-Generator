@@ -139,6 +139,128 @@ public struct RenderResult: Sendable {
     }
 }
 
+public enum FPSBakeoffVariantID: String, Codable, CaseIterable, Sendable {
+    case currentCFR
+    case mixedCadenceVFR
+    case stillAwareCFR
+
+    var executionVariant: FPSBakeoffVariant {
+        switch self {
+        case .currentCFR:
+            return .currentCFR
+        case .mixedCadenceVFR:
+            return .mixedCadenceVFR
+        case .stillAwareCFR:
+            return .stillAwareCFR
+        }
+    }
+
+    public var displayName: String {
+        executionVariant.displayName
+    }
+
+    public var filenameSuffix: String {
+        executionVariant.filenameSuffix
+    }
+}
+
+public struct FPSBakeoffVariantResult: Codable, Equatable, Sendable {
+    public let variant: FPSBakeoffVariantID
+    public let outputPath: String
+    public let diagnosticsLogPath: String?
+    public let backendSummary: String?
+    public let width: Int
+    public let height: Int
+    public let nominalFrameRate: Int
+    public let fileSizeBytes: Int64?
+    public let elapsedSeconds: Double
+    public let ffprobeFacts: FPSBakeoffFFprobeFacts?
+    public let errorMessage: String?
+
+    public var succeeded: Bool {
+        errorMessage == nil
+    }
+
+    public init(
+        variant: FPSBakeoffVariantID,
+        outputPath: String,
+        diagnosticsLogPath: String?,
+        backendSummary: String?,
+        width: Int,
+        height: Int,
+        nominalFrameRate: Int,
+        fileSizeBytes: Int64?,
+        elapsedSeconds: Double,
+        ffprobeFacts: FPSBakeoffFFprobeFacts?,
+        errorMessage: String?
+    ) {
+        self.variant = variant
+        self.outputPath = outputPath
+        self.diagnosticsLogPath = diagnosticsLogPath
+        self.backendSummary = backendSummary
+        self.width = width
+        self.height = height
+        self.nominalFrameRate = nominalFrameRate
+        self.fileSizeBytes = fileSizeBytes
+        self.elapsedSeconds = elapsedSeconds
+        self.ffprobeFacts = ffprobeFacts
+        self.errorMessage = errorMessage
+    }
+}
+
+public struct FPSBakeoffFFprobeFacts: Codable, Equatable, Sendable {
+    public let codecName: String?
+    public let width: Int?
+    public let height: Int?
+    public let averageFrameRate: String?
+    public let realFrameRate: String?
+    public let duration: String?
+    public let colorPrimaries: String?
+    public let colorTransfer: String?
+    public let colorSpace: String?
+    public let isProbablyVFR: Bool?
+
+    public init(
+        codecName: String?,
+        width: Int?,
+        height: Int?,
+        averageFrameRate: String?,
+        realFrameRate: String?,
+        duration: String?,
+        colorPrimaries: String?,
+        colorTransfer: String?,
+        colorSpace: String?,
+        isProbablyVFR: Bool?
+    ) {
+        self.codecName = codecName
+        self.width = width
+        self.height = height
+        self.averageFrameRate = averageFrameRate
+        self.realFrameRate = realFrameRate
+        self.duration = duration
+        self.colorPrimaries = colorPrimaries
+        self.colorTransfer = colorTransfer
+        self.colorSpace = colorSpace
+        self.isProbablyVFR = isProbablyVFR
+    }
+}
+
+public struct FPSBakeoffResult: Codable, Equatable, Sendable {
+    public let runDirectoryPath: String
+    public let baselineVariant: FPSBakeoffVariantID
+    public let variants: [FPSBakeoffVariantResult]
+
+    public init(
+        runDirectoryPath: String,
+        baselineVariant: FPSBakeoffVariantID,
+        variants: [FPSBakeoffVariantResult]
+    ) {
+        self.runDirectoryPath = runDirectoryPath
+        self.baselineVariant = baselineVariant
+        self.variants = variants
+    }
+}
+
 public struct RenderArtifactSnapshotCandidate: Equatable, Sendable {
     public let url: URL
     public let label: String
@@ -250,6 +372,34 @@ public final class RenderCoordinator: @unchecked Sendable {
             artifactHandler: artifactHandler,
             systemFFmpegFallbackHandler: systemFFmpegFallbackHandler,
             executionOptions: executionOptions
+        )
+    }
+
+    public func runFPSBakeoff(
+        preparation: RenderPreparation,
+        request: RenderRequest,
+        runDirectory: URL,
+        photoMaterializer: PhotoAssetMaterializing?,
+        writeDiagnosticsLog: Bool,
+        progressHandler: (@MainActor @Sendable (Double) -> Void)?,
+        statusHandler: (@MainActor @Sendable (String) -> Void)? = nil,
+        artifactHandler: RenderArtifactHandler? = nil,
+        systemFFmpegFallbackHandler: SystemFFmpegFallbackHandler? = nil
+    ) async throws -> FPSBakeoffResult {
+        try await renderEngine.runFPSBakeoff(
+            timeline: preparation.timeline,
+            style: request.style,
+            exportProfile: request.export,
+            baseOutputTarget: request.output,
+            runDirectory: runDirectory,
+            plexTVMetadata: request.plexTVMetadata,
+            chapters: request.chapters,
+            photoMaterializer: photoMaterializer,
+            writeDiagnosticsLog: writeDiagnosticsLog,
+            progressHandler: progressHandler,
+            statusHandler: statusHandler,
+            artifactHandler: artifactHandler,
+            systemFFmpegFallbackHandler: systemFFmpegFallbackHandler
         )
     }
 

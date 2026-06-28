@@ -41,6 +41,17 @@ protocol RenderCoordinating: AnyObject, Sendable {
         systemFFmpegFallbackHandler: SystemFFmpegFallbackHandler?,
         executionOptions: RenderExecutionOptions
     ) async throws -> RenderResult
+    func runFPSBakeoff(
+        preparation: RenderPreparation,
+        request: RenderRequest,
+        runDirectory: URL,
+        photoMaterializer: PhotoAssetMaterializing?,
+        writeDiagnosticsLog: Bool,
+        progressHandler: RenderProgressHandler,
+        statusHandler: RenderStatusHandler,
+        artifactHandler: RenderArtifactSnapshotHandler,
+        systemFFmpegFallbackHandler: SystemFFmpegFallbackHandler?
+    ) async throws -> FPSBakeoffResult
     func cancelCurrentRender()
     func requestPauseAfterCheckpoint()
 }
@@ -726,6 +737,10 @@ final class MainWindowViewModel: ObservableObject {
         !isRendering && !isPreparingYearQueue && renderTask == nil
     }
 
+    var canRunFPSBakeoff: Bool {
+        canStartRender
+    }
+
     var canChooseInputFolder: Bool {
         !isRendering && !isPreparingYearQueue
     }
@@ -1202,6 +1217,18 @@ final class MainWindowViewModel: ObservableObject {
         }
     }
 
+    func runFPSBakeoff() {
+        guard canRunFPSBakeoff else { return }
+
+        let snapshot = makeCurrentRenderSnapshot()
+        renderTask = Task {
+            await performFPSBakeoff(snapshot: snapshot)
+            await MainActor.run {
+                self.renderTask = nil
+            }
+        }
+    }
+
     func addCurrentSettingsToQueue() {
         let snapshot = makeCurrentRenderSnapshot()
 
@@ -1352,6 +1379,96 @@ final class MainWindowViewModel: ObservableObject {
                 finishPausedSingleRun(message)
                 return
             }
+            finishFailedRun(error)
+        }
+    }
+
+    private func performFPSBakeoff(snapshot: QueuedRenderSnapshot) async {
+        beginRenderRun(status: "Preparing FPS bakeoff...", initialProgress: 0.01)
+        activeRenderIdentity = makeActiveRenderIdentity(
+            snapshot: snapshot,
+            drawerDescription: "FPS bakeoff in progress",
+            queuedJobID: nil
+        )
+
+        do {
+            let monthYear = previewMonthYear(for: snapshot)
+            let style = buildStyle(for: monthYear, snapshot: snapshot)
+            let preparedSession = try await prepareRenderSession(
+                snapshot: snapshot,
+                style: style,
+                monthYear: monthYear,
+                requiresSmartFrameRateInspection: snapshot.selectedFrameRatePolicy == .smart,
+                requiresSmartAudioInspection: snapshot.selectedAudioLayout == .smart,
+                progressMapper: { 0.01 + $0 * 0.14 },
+                syncLiveState: true
+            )
+            let exportResolution = resolveExportProfile(
+                snapshot: snapshot,
+                resolution: snapshot.selectedResolutionPolicy.normalized,
+                frameRate: snapshot.selectedFrameRatePolicy,
+                dynamicRange: snapshot.selectedDynamicRange,
+                audioLayout: snapshot.selectedAudioLayout,
+                hdrHEVCEncoderMode: snapshot.selectedHDRHEVCEncoderMode,
+                hdrX265Speed: snapshot.selectedHDRX265Speed,
+                items: preparedSession.preparation.items
+            )
+            guard exportResolution.effectiveProfile.dynamicRange == .hdr,
+                  exportResolution.effectiveProfile.videoCodec == .hevc else {
+                throw RenderError.exportFailed("FPS bakeoff requires HDR HEVC export settings. Switch Range to HDR and Codec to HEVC, or reset to Plex defaults.")
+            }
+            warnings = preparedSession.preparation.warnings + exportResolution.warnings.map(\.message)
+            let plexRenderDetails = try resolvePlexRenderDetails(
+                preparedSession: preparedSession,
+                fallbackMonthYear: monthYear,
+                exportProfile: exportResolution.effectiveProfile,
+                outputBaseFilenameOverride: nil,
+                snapshot: snapshot,
+                syncLiveState: true
+            )
+            let request = makeRenderRequest(
+                preparedSession: preparedSession,
+                exportProfile: exportResolution.effectiveProfile,
+                outputBaseFilename: plexRenderDetails.outputBaseFilename,
+                outputDirectory: snapshot.outputDirectoryURL,
+                plexTVMetadata: plexRenderDetails.metadata
+            )
+            let runDirectory = try makeFPSBakeoffRunDirectory(
+                outputDirectory: snapshot.outputDirectoryURL,
+                baseFilename: plexRenderDetails.outputBaseFilename
+            )
+            let result = try await coordinator.runFPSBakeoff(
+                preparation: preparedSession.preparation,
+                request: request,
+                runDirectory: runDirectory,
+                photoMaterializer: preparedSession.usesPhotoMaterializer ? photoMaterializer : nil,
+                writeDiagnosticsLog: snapshot.writeDiagnosticsLog,
+                progressHandler: { [weak self] progress in
+                    self?.applyReportedRenderProgress(progress)
+                },
+                statusHandler: { [weak self] status in
+                    self?.applyReportedRenderStatus(status)
+                },
+                artifactHandler: { [weak self] candidate in
+                    self?.handleLiveSnapshotCandidate(candidate)
+                },
+                systemFFmpegFallbackHandler: { [weak self] request in
+                    guard let self else { return false }
+                    return await self.confirmSystemFFmpegFallbackIfNeeded(request)
+                }
+            )
+            let reportURLs = try writeFPSBakeoffReports(result)
+            lastOutputPath = runDirectory.path
+            lastDiagnosticsPath = reportURLs.text.path
+            let successfulVariantCount = result.variants.filter(\.succeeded).count
+            lastBackendSummary = "FPS bakeoff variants: \(successfulVariantCount) of \(result.variants.count) succeeded"
+            guard successfulVariantCount > 0 else {
+                throw RenderError.exportFailed(
+                    "FPS bakeoff failed: no variants produced a final output file.\nReport: \(reportURLs.text.path)"
+                )
+            }
+            finishSuccessfulSingleRun(status: "FPS bakeoff complete.\nReport: \(reportURLs.text.path)")
+        } catch {
             finishFailedRun(error)
         }
     }
@@ -2649,6 +2766,96 @@ final class MainWindowViewModel: ObservableObject {
             return
         }
         warnings.append(warning)
+    }
+
+    private func makeFPSBakeoffRunDirectory(outputDirectory: URL, baseFilename: String) throws -> URL {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = calendar.timeZone
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let timestamp = formatter.string(from: nowProvider())
+        let baseName = "\(baseFilename)__fps-bakeoff-\(timestamp)"
+        var candidate = outputDirectory.appendingPathComponent(baseName, isDirectory: true)
+        var suffix = 2
+        while FileManager.default.fileExists(atPath: candidate.path) {
+            candidate = outputDirectory.appendingPathComponent("\(baseName)-\(suffix)", isDirectory: true)
+            suffix += 1
+        }
+        try FileManager.default.createDirectory(at: candidate, withIntermediateDirectories: true)
+        return candidate
+    }
+
+    private func writeFPSBakeoffReports(_ result: FPSBakeoffResult) throws -> (json: URL, text: URL) {
+        let runDirectory = URL(fileURLWithPath: result.runDirectoryPath, isDirectory: true)
+        let jsonURL = runDirectory.appendingPathComponent("fps-bakeoff-report.json")
+        let textURL = runDirectory.appendingPathComponent("fps-bakeoff-summary.txt")
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(result)
+        try data.write(to: jsonURL, options: [.atomic])
+        try makeFPSBakeoffTextSummary(result).write(to: textURL, atomically: true, encoding: .utf8)
+        return (jsonURL, textURL)
+    }
+
+    private func makeFPSBakeoffTextSummary(_ result: FPSBakeoffResult) -> String {
+        let baselineSize = result.variants.first { $0.variant == result.baselineVariant }?.fileSizeBytes
+        var lines: [String] = [
+            "FPS Bakeoff Summary",
+            "Run directory: \(result.runDirectoryPath)",
+            "",
+            "Policy:",
+            "- Current CFR: existing resolved app FPS for all sections.",
+            "- Plan 1 Mixed Cadence: video bodies use standard source-FPS buckets; title bodies use 30 fps; still bodies use 5 fps; still-involved transitions use 30 fps; video-to-video transitions use the higher video bucket.",
+            "- Plan 3 Still-Aware CFR: still/title presentation prep uses 5 fps, final delivery remains the resolved app FPS.",
+            ""
+        ]
+
+        for variant in result.variants {
+            lines.append(variant.variant.displayName)
+            lines.append("- Output: \(variant.outputPath)")
+            if let errorMessage = variant.errorMessage {
+                lines.append("- Status: failed")
+                lines.append("- Error: \(errorMessage)")
+            } else {
+                lines.append("- Status: succeeded")
+            }
+            if let fileSizeBytes = variant.fileSizeBytes {
+                lines.append("- Size: \(humanReadableBytes(fileSizeBytes)) (\(fileSizeBytes) bytes)")
+                if let baselineSize, baselineSize > 0, variant.variant != result.baselineVariant {
+                    let delta = (Double(fileSizeBytes) - Double(baselineSize)) / Double(baselineSize) * 100
+                    lines.append("- Size vs Current CFR: \(String(format: "%.1f%%", delta))")
+                }
+            } else {
+                lines.append("- Size: unknown")
+            }
+            lines.append("- Elapsed: \(String(format: "%.1fs", variant.elapsedSeconds))")
+            lines.append("- Nominal app FPS: \(variant.nominalFrameRate)")
+            if let facts = variant.ffprobeFacts {
+                lines.append("- ffprobe codec: \(facts.codecName ?? "unknown")")
+                lines.append("- ffprobe avg_frame_rate: \(facts.averageFrameRate ?? "unknown")")
+                lines.append("- ffprobe r_frame_rate: \(facts.realFrameRate ?? "unknown")")
+                if let isProbablyVFR = facts.isProbablyVFR {
+                    lines.append("- ffprobe VFR signal: \(isProbablyVFR ? "likely VFR" : "not indicated")")
+                }
+                lines.append("- ffprobe color: primaries=\(facts.colorPrimaries ?? "unknown"), transfer=\(facts.colorTransfer ?? "unknown"), matrix=\(facts.colorSpace ?? "unknown")")
+            } else {
+                lines.append("- ffprobe: unavailable")
+            }
+            if let diagnosticsLogPath = variant.diagnosticsLogPath {
+                lines.append("- Diagnostics: \(diagnosticsLogPath)")
+            }
+            lines.append("")
+        }
+
+        return lines.joined(separator: "\n")
+    }
+
+    private func humanReadableBytes(_ bytes: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB, .useGB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: bytes)
     }
 
     private func makeRenderCompletionSummary(

@@ -636,6 +636,43 @@ final class HDRFFmpegPipelineTests: XCTestCase {
         XCTAssertTrue(joined.contains("fade=t=out:st=1.500000:d=1.500000:color=black"))
     }
 
+    func testCommandBuilderUsesBridgedAudioInputWhenProvided() throws {
+        let builder = FFmpegCommandBuilder()
+        let sourceURL = URL(fileURLWithPath: "/tmp/source.mov")
+        let bridgedAudioURL = URL(fileURLWithPath: "/tmp/source-audio.m4a")
+        let plan = FFmpegRenderPlan(
+            clips: [
+                FFmpegRenderClip(
+                    url: sourceURL,
+                    ffmpegAudioURL: bridgedAudioURL,
+                    durationSeconds: 3.0,
+                    includeAudio: true,
+                    hasAudioTrack: true,
+                    colorInfo: ColorInfo(isHDR: false, colorPrimaries: "ITU_R_709_2", transferFunction: "ITU_R_709_2"),
+                    sourceDescription: "source"
+                )
+            ],
+            transitionDurationSeconds: 0,
+            outputURL: URL(fileURLWithPath: "/tmp/out.mp4"),
+            renderSize: CGSize(width: 1920, height: 1080),
+            frameRate: 30,
+            audioLayout: .stereo,
+            bitrateMode: .balanced,
+            container: .mp4,
+            videoCodec: .h264,
+            dynamicRange: .sdr
+        )
+
+        let command = try builder.buildCommand(plan: plan, resolution: makeCapableResolution())
+        let joined = command.arguments.joined(separator: " ")
+
+        XCTAssertTrue(joined.contains("-i \(sourceURL.path)"))
+        XCTAssertTrue(joined.contains("-i \(bridgedAudioURL.path)"))
+        XCTAssertTrue(joined.contains("[0:v]trim"))
+        XCTAssertTrue(joined.contains("[1:a:0]atrim"))
+        XCTAssertFalse(joined.contains("[0:a:0]atrim"))
+    }
+
     func testHDRLibx265FinalDeliveryAddsThreadCapsForStability() throws {
         let builder = FFmpegCommandBuilder()
         let plan = FFmpegRenderPlan(

@@ -57,6 +57,15 @@ final class FFmpegProgressivePipelineTests: XCTestCase {
         XCTAssertNil(makeExecutionPlan(builder: builder, plan: intermediatePlan))
     }
 
+    func testMixedCadenceForcesProgressivePipelineForSmallHDRHEVCPlans() {
+        let builder = FFmpegHDRProgressivePipelineBuilder()
+        let currentPlan = makeMixedKindHDRPlan(variant: .currentCFR)
+        let mixedPlan = makeMixedKindHDRPlan(variant: .mixedCadenceVFR)
+
+        XCTAssertNil(makeExecutionPlan(builder: builder, plan: currentPlan))
+        XCTAssertNotNil(makeExecutionPlan(builder: builder, plan: mixedPlan))
+    }
+
     func testProgressivePipelineBuildsBoundedBatchesAndPreservesDurationMath() throws {
         let builder = FFmpegHDRProgressivePipelineBuilder()
         let commandBuilder = FFmpegCommandBuilder()
@@ -324,16 +333,140 @@ final class FFmpegProgressivePipelineTests: XCTestCase {
         XCTAssertTrue(joined.contains("-crf 21"))
     }
 
+    func testDefaultForcedProgressivePlanDoesNotAddSliceFrameRateOverrides() throws {
+        let builder = FFmpegHDRProgressivePipelineBuilder()
+        let executionPlan = try XCTUnwrap(
+            makeExecutionPlan(
+                builder: builder,
+                plan: makeMixedKindHDRPlan(variant: nil),
+                forceProgressive: true
+            )
+        )
+
+        XCTAssertTrue(executionPlan.slices.map(\.preferredFrameRate).allSatisfy { $0 == nil })
+    }
+
+    func testMixedCadenceBakeoffUsesStillAndBridgeFrameRateOverrides() throws {
+        let builder = FFmpegHDRProgressivePipelineBuilder()
+        let executionPlan = try XCTUnwrap(
+            makeExecutionPlan(
+                builder: builder,
+                plan: makeMixedKindHDRPlan(variant: .mixedCadenceVFR),
+                forceProgressive: true
+            )
+        )
+
+        XCTAssertEqual(executionPlan.presentationPlans.map(\.frameRate), [60, 5, 60])
+        XCTAssertEqual(executionPlan.slices.map(\.preferredFrameRate), [60, 30, 5, 30, 60])
+    }
+
+    func testDefaultExecutionOptionsUseMixedCadence() {
+        XCTAssertEqual(RenderExecutionOptions.default.fpsBakeoffVariant, .mixedCadenceVFR)
+    }
+
+    func testMixedCadenceKeepsTitleMotionAtThirtyFPS() throws {
+        let builder = FFmpegHDRProgressivePipelineBuilder()
+        let executionPlan = try XCTUnwrap(
+            makeExecutionPlan(
+                builder: builder,
+                plan: makeTitleStillHDRPlan(variant: .mixedCadenceVFR),
+                forceProgressive: true
+            )
+        )
+
+        XCTAssertEqual(executionPlan.presentationPlans.map(\.frameRate), [30, 5, 60])
+        XCTAssertEqual(executionPlan.slices.map(\.preferredFrameRate), [30, 30, 5, 30, 60])
+    }
+
+    func testStillAwareCFRBakeoffOnlyLowersStillPresentationRate() throws {
+        let builder = FFmpegHDRProgressivePipelineBuilder()
+        let executionPlan = try XCTUnwrap(
+            makeExecutionPlan(
+                builder: builder,
+                plan: makeMixedKindHDRPlan(variant: .stillAwareCFR),
+                forceProgressive: true
+            )
+        )
+
+        XCTAssertEqual(executionPlan.presentationPlans.map(\.frameRate), [60, 5, 60])
+        XCTAssertEqual(executionPlan.slices.map(\.preferredFrameRate), [60, 60, 60, 60, 60])
+    }
+
     private func makeExecutionPlan(
         builder: FFmpegHDRProgressivePipelineBuilder,
-        plan: FFmpegRenderPlan
+        plan: FFmpegRenderPlan,
+        forceProgressive: Bool = false
     ) -> FFmpegHDRProgressiveExecutionPlan? {
         builder.makeExecutionPlan(
             for: plan,
             presentationOutputURL: { index in URL(fileURLWithPath: "/tmp/presentation-\(index).mov") },
             batchOutputURL: { index in URL(fileURLWithPath: "/tmp/batch-\(index).mov") },
             concatListURL: { URL(fileURLWithPath: "/tmp/progressive.ffconcat") },
-            concatOutputURL: { URL(fileURLWithPath: "/tmp/progressive.mov") }
+            concatOutputURL: { URL(fileURLWithPath: "/tmp/progressive.mov") },
+            forceProgressive: forceProgressive
+        )
+    }
+
+    private func makeMixedKindHDRPlan(variant: FPSBakeoffVariant?) -> FFmpegRenderPlan {
+        FFmpegRenderPlan(
+            clips: [
+                makeHDRClip(index: 0, kind: .video, sourceFrameRate: 59.94),
+                makeHDRClip(index: 1, kind: .still, sourceFrameRate: nil),
+                makeHDRClip(index: 2, kind: .video, sourceFrameRate: 60)
+            ],
+            transitionDurationSeconds: 0.75,
+            endFadeToBlackDurationSeconds: 1.5,
+            outputURL: URL(fileURLWithPath: "/tmp/final.mp4"),
+            renderSize: CGSize(width: 3840, height: 2160),
+            frameRate: 60,
+            audioLayout: .stereo,
+            bitrateMode: .sizeFirst,
+            container: .mp4,
+            videoCodec: .hevc,
+            dynamicRange: .hdr,
+            hdrHEVCEncoderMode: .automatic,
+            renderIntent: .finalDelivery,
+            executionFPSBakeoffVariant: variant
+        )
+    }
+
+    private func makeTitleStillHDRPlan(variant: FPSBakeoffVariant?) -> FFmpegRenderPlan {
+        FFmpegRenderPlan(
+            clips: [
+                makeHDRClip(index: 0, kind: .title, sourceFrameRate: nil),
+                makeHDRClip(index: 1, kind: .still, sourceFrameRate: nil),
+                makeHDRClip(index: 2, kind: .video, sourceFrameRate: 60)
+            ],
+            transitionDurationSeconds: 0.75,
+            endFadeToBlackDurationSeconds: 1.5,
+            outputURL: URL(fileURLWithPath: "/tmp/final.mp4"),
+            renderSize: CGSize(width: 3840, height: 2160),
+            frameRate: 60,
+            audioLayout: .stereo,
+            bitrateMode: .sizeFirst,
+            container: .mp4,
+            videoCodec: .hevc,
+            dynamicRange: .hdr,
+            hdrHEVCEncoderMode: .automatic,
+            renderIntent: .finalDelivery,
+            executionFPSBakeoffVariant: variant
+        )
+    }
+
+    private func makeHDRClip(index: Int, kind: RenderClipKind, sourceFrameRate: Double?) -> FFmpegRenderClip {
+        FFmpegRenderClip(
+            url: URL(fileURLWithPath: "/tmp/source-\(index).mov"),
+            durationSeconds: 5,
+            includeAudio: kind == .video,
+            hasAudioTrack: kind == .video,
+            colorInfo: ColorInfo(
+                isHDR: true,
+                colorPrimaries: "ITU_R_2020",
+                transferFunction: "ITU_R_2100_HLG"
+            ),
+            sourceDescription: "clip-\(index)",
+            sourceFrameRate: sourceFrameRate,
+            auditInfo: RenderClipAuditInfo(kind: kind, hasCaptureDateOverlay: false)
         )
     }
 

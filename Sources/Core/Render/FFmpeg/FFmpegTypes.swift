@@ -336,30 +336,39 @@ struct FFmpegBinaryResolution: Equatable, Sendable {
 
 struct FFmpegRenderClip: Equatable, Sendable {
     let url: URL
+    let ffmpegAudioURL: URL?
     let durationSeconds: Double
     let includeAudio: Bool
     let hasAudioTrack: Bool
     let colorInfo: ColorInfo
     let sourceDescription: String
+    let sourceFrameRate: Double?
+    let preferredFrameRate: Int?
     let captureDateOverlayURL: URL?
     let auditInfo: RenderClipAuditInfo
 
     init(
         url: URL,
+        ffmpegAudioURL: URL? = nil,
         durationSeconds: Double,
         includeAudio: Bool,
         hasAudioTrack: Bool,
         colorInfo: ColorInfo,
         sourceDescription: String,
+        sourceFrameRate: Double? = nil,
+        preferredFrameRate: Int? = nil,
         captureDateOverlayURL: URL? = nil,
         auditInfo: RenderClipAuditInfo = RenderClipAuditInfo(kind: .video, hasCaptureDateOverlay: false)
     ) {
         self.url = url
+        self.ffmpegAudioURL = ffmpegAudioURL
         self.durationSeconds = durationSeconds
         self.includeAudio = includeAudio
         self.hasAudioTrack = hasAudioTrack
         self.colorInfo = colorInfo
         self.sourceDescription = sourceDescription
+        self.sourceFrameRate = sourceFrameRate
+        self.preferredFrameRate = preferredFrameRate
         self.captureDateOverlayURL = captureDateOverlayURL
         self.auditInfo = auditInfo
     }
@@ -381,6 +390,21 @@ struct FFmpegAssemblySlice: Equatable, Sendable {
     let kind: FFmpegAssemblySliceKind
     let segments: [FFmpegAssemblySegment]
     let outputDurationSeconds: Double
+    let preferredFrameRate: Int?
+
+    init(
+        sequenceIndex: Int,
+        kind: FFmpegAssemblySliceKind,
+        segments: [FFmpegAssemblySegment],
+        outputDurationSeconds: Double,
+        preferredFrameRate: Int? = nil
+    ) {
+        self.sequenceIndex = sequenceIndex
+        self.kind = kind
+        self.segments = segments
+        self.outputDurationSeconds = outputDurationSeconds
+        self.preferredFrameRate = preferredFrameRate
+    }
 
     var sourceClipIndices: [Int] {
         var seen: Set<Int> = []
@@ -446,6 +470,7 @@ struct FFmpegRenderPlan: Equatable, Sendable {
     let chapters: [RenderChapter]
     let chapterMetadataURL: URL?
     let renderIntent: FFmpegRenderIntent
+    let executionFPSBakeoffVariant: FPSBakeoffVariant?
 
     init(
         clips: [FFmpegRenderClip],
@@ -465,7 +490,8 @@ struct FFmpegRenderPlan: Equatable, Sendable {
         embeddedMetadata: EmbeddedOutputMetadata? = nil,
         chapters: [RenderChapter] = [],
         chapterMetadataURL: URL? = nil,
-        renderIntent: FFmpegRenderIntent = .finalDelivery
+        renderIntent: FFmpegRenderIntent = .finalDelivery,
+        executionFPSBakeoffVariant: FPSBakeoffVariant? = nil
     ) {
         self.clips = clips
         self.assemblySlices = assemblySlices
@@ -485,6 +511,7 @@ struct FFmpegRenderPlan: Equatable, Sendable {
         self.chapters = chapters
         self.chapterMetadataURL = chapterMetadataURL
         self.renderIntent = renderIntent
+        self.executionFPSBakeoffVariant = executionFPSBakeoffVariant
     }
 
     var capabilityRequirements: FFmpegCapabilityRequirements {

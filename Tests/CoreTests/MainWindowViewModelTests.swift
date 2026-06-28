@@ -278,6 +278,60 @@ final class MainWindowViewModelTests: XCTestCase {
         )
     }
 
+    func testFPSBakeoffFailsWhenNoVariantProducesOutput() async throws {
+        let coordinator = RenderCoordinatorSpy(
+            preparation: makePreparation(),
+            fpsBakeoffResultBuilder: { request, runDirectory in
+                let variants = FPSBakeoffVariantID.allCases.map { variant in
+                    FPSBakeoffVariantResult(
+                        variant: variant,
+                        outputPath: runDirectory
+                            .appendingPathComponent("\(request.output.baseFilename)__fps-bakeoff-\(variant.filenameSuffix)")
+                            .appendingPathExtension(request.export.container.fileExtension)
+                            .path,
+                        diagnosticsLogPath: nil,
+                        backendSummary: nil,
+                        width: 1920,
+                        height: 1080,
+                        nominalFrameRate: 60,
+                        fileSizeBytes: nil,
+                        elapsedSeconds: 1,
+                        ffprobeFacts: nil,
+                        errorMessage: "Simulated bakeoff failure"
+                    )
+                }
+                return FPSBakeoffResult(
+                    runDirectoryPath: runDirectory.path,
+                    baselineVariant: .currentCFR,
+                    variants: variants
+                )
+            }
+        )
+        let viewModel = makeViewModel(
+            coordinator: coordinator,
+            preferencesStore: makePreferencesStore()
+        )
+        let directory = makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        viewModel.sourceMode = .folder
+        viewModel.selectedFolderURL = directory
+        viewModel.outputDirectoryURL = directory
+        viewModel.selectedDynamicRange = .hdr
+        viewModel.selectedVideoCodec = .hevc
+
+        viewModel.runFPSBakeoff()
+        await waitUntil(message: "Timed out waiting for failed FPS bakeoff.") {
+            !viewModel.isRendering && viewModel.statusPhaseLabel == "Failed"
+        }
+
+        XCTAssertFalse(viewModel.showRenderCompleteAlert)
+        XCTAssertTrue(viewModel.statusMessage.contains("FPS bakeoff failed: no variants produced a final output file."))
+        XCTAssertTrue(viewModel.statusMessage.contains("fps-bakeoff-summary.txt"))
+        XCTAssertTrue(viewModel.lastOutputPath.contains("__fps-bakeoff-"))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: viewModel.lastDiagnosticsPath))
+    }
+
     func testQueuedRenderWithDiagnosticsOffDoesNotWriteSidecarJSON() async throws {
         let coordinator = RenderCoordinatorSpy(preparation: makePreparation())
         let viewModel = makeViewModel(
@@ -2559,10 +2613,12 @@ private final class RenderCoordinatorSpy: RenderCoordinating, @unchecked Sendabl
     let suspendRenderUntilResumed: Bool
     let renderDelay: Duration?
     let renderResultBuilder: ((RenderPreparation, RenderRequest, Int, Bool) -> RenderResult)?
+    let fpsBakeoffResultBuilder: ((RenderRequest, URL) -> FPSBakeoffResult)?
     let systemFallbackReason: String?
     let artifactLabel: String?
     private(set) var prepareFolderRequests: [RenderRequest] = []
     private(set) var renderRequests: [RenderRequest] = []
+    private(set) var fpsBakeoffRequests: [RenderRequest] = []
     private(set) var cancelCurrentRenderCallCount: Int = 0
     private(set) var pauseAfterCheckpointCallCount: Int = 0
     private var suspendedRenderContinuation: CheckedContinuation<Void, Never>?
@@ -2575,7 +2631,8 @@ private final class RenderCoordinatorSpy: RenderCoordinating, @unchecked Sendabl
         renderDelay: Duration? = nil,
         systemFallbackReason: String? = nil,
         artifactLabel: String? = nil,
-        renderResultBuilder: ((RenderPreparation, RenderRequest, Int, Bool) -> RenderResult)? = nil
+        renderResultBuilder: ((RenderPreparation, RenderRequest, Int, Bool) -> RenderResult)? = nil,
+        fpsBakeoffResultBuilder: ((RenderRequest, URL) -> FPSBakeoffResult)? = nil
     ) {
         self.preparation = preparation
         self.failedRenderIndices = failedRenderIndices
@@ -2585,6 +2642,7 @@ private final class RenderCoordinatorSpy: RenderCoordinating, @unchecked Sendabl
         self.systemFallbackReason = systemFallbackReason
         self.artifactLabel = artifactLabel
         self.renderResultBuilder = renderResultBuilder
+        self.fpsBakeoffResultBuilder = fpsBakeoffResultBuilder
     }
 
     func prepareFolderRender(request: RenderRequest) async throws -> RenderPreparation {
@@ -2675,6 +2733,49 @@ private final class RenderCoordinatorSpy: RenderCoordinating, @unchecked Sendabl
                 height: defaultVideoDimensions(for: request.export.resolution).height,
                 frameRate: defaultFrameRate(for: request.export.frameRate)
             )
+        )
+    }
+
+    func runFPSBakeoff(
+        preparation: RenderPreparation,
+        request: RenderRequest,
+        runDirectory: URL,
+        photoMaterializer: PhotoAssetMaterializing?,
+        writeDiagnosticsLog: Bool,
+        progressHandler: RenderProgressHandler,
+        statusHandler: RenderStatusHandler,
+        artifactHandler: RenderArtifactSnapshotHandler,
+        systemFFmpegFallbackHandler: SystemFFmpegFallbackHandler?
+    ) async throws -> FPSBakeoffResult {
+        fpsBakeoffRequests.append(request)
+        statusHandler?("Running FPS bakeoff")
+        progressHandler?(1.0)
+        try FileManager.default.createDirectory(at: runDirectory, withIntermediateDirectories: true)
+        if let fpsBakeoffResultBuilder {
+            return fpsBakeoffResultBuilder(request, runDirectory)
+        }
+        let variants = FPSBakeoffVariantID.allCases.map { variant in
+            FPSBakeoffVariantResult(
+                variant: variant,
+                outputPath: runDirectory
+                    .appendingPathComponent("\(request.output.baseFilename)__fps-bakeoff-\(variant.filenameSuffix)")
+                    .appendingPathExtension(request.export.container.fileExtension)
+                    .path,
+                diagnosticsLogPath: nil,
+                backendSummary: "FFmpeg HDR backend [bundled] (encoder: libx265)",
+                width: 1920,
+                height: 1080,
+                nominalFrameRate: 60,
+                fileSizeBytes: variant == .currentCFR ? 1_000_000 : 800_000,
+                elapsedSeconds: 1,
+                ffprobeFacts: nil,
+                errorMessage: nil
+            )
+        }
+        return FPSBakeoffResult(
+            runDirectoryPath: runDirectory.path,
+            baselineVariant: .currentCFR,
+            variants: variants
         )
     }
 

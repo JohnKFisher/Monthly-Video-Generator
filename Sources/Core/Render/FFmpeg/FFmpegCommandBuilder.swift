@@ -95,7 +95,14 @@ struct FFmpegCommandBuilder {
             }
 
             if clip.includeAudio && clip.hasAudioTrack {
-                audioInputIndexForClip[clipIndex] = videoInputIndex
+                if let ffmpegAudioURL = clip.ffmpegAudioURL {
+                    let bridgedAudioInputIndex = nextInputIndex
+                    arguments.append(contentsOf: ["-i", ffmpegAudioURL.path])
+                    nextInputIndex += 1
+                    audioInputIndexForClip[clipIndex] = bridgedAudioInputIndex
+                } else {
+                    audioInputIndexForClip[clipIndex] = videoInputIndex
+                }
             } else {
                 let silentInputIndex = nextInputIndex
                 arguments.append(contentsOf: [
@@ -436,7 +443,7 @@ struct FFmpegCommandBuilder {
                 let audioLabel = "sa\(slice.sequenceIndex)"
                 filterParts.append(
                     "[\(segment.clipIndex):v]trim=start=\(formatSeconds(segment.startTimeSeconds)):duration=\(formatSeconds(segment.durationSeconds))," +
-                    "setpts=PTS-STARTPTS[\(videoLabel)]"
+                    "setpts=PTS-STARTPTS\(assemblyFPSFilter(for: slice))[\(videoLabel)]"
                 )
                 filterParts.append(
                     "[\(segment.clipIndex):a:0]atrim=start=\(formatSeconds(segment.startTimeSeconds)):duration=\(formatSeconds(segment.durationSeconds))," +
@@ -460,11 +467,11 @@ struct FFmpegCommandBuilder {
 
                 filterParts.append(
                     "[\(left.clipIndex):v]trim=start=\(formatSeconds(left.startTimeSeconds)):duration=\(formatSeconds(left.durationSeconds))," +
-                    "setpts=PTS-STARTPTS[\(leftVideoLabel)]"
+                    "setpts=PTS-STARTPTS\(assemblyFPSFilter(for: slice))[\(leftVideoLabel)]"
                 )
                 filterParts.append(
                     "[\(right.clipIndex):v]trim=start=\(formatSeconds(right.startTimeSeconds)):duration=\(formatSeconds(right.durationSeconds))," +
-                    "setpts=PTS-STARTPTS[\(rightVideoLabel)]"
+                    "setpts=PTS-STARTPTS\(assemblyFPSFilter(for: slice))[\(rightVideoLabel)]"
                 )
                 filterParts.append(
                     "[\(leftVideoLabel)][\(rightVideoLabel)]xfade=transition=fade:duration=\(formatSeconds(slice.outputDurationSeconds)):offset=0[\(videoLabel)]"
@@ -662,6 +669,13 @@ struct FFmpegCommandBuilder {
 
     private func formatScalar(_ value: Double) -> String {
         String(format: "%.6f", value)
+    }
+
+    private func assemblyFPSFilter(for slice: FFmpegAssemblySlice) -> String {
+        guard let preferredFrameRate = slice.preferredFrameRate else {
+            return ""
+        }
+        return ",fps=\(preferredFrameRate)"
     }
 
     private func audioBitrateArgument(_ bitrate: Int) -> String {
@@ -1116,7 +1130,8 @@ private extension FFmpegRenderPlan {
             embeddedMetadata: embeddedMetadata,
             chapters: chapters,
             chapterMetadataURL: chapterMetadataURL,
-            renderIntent: .finalDelivery
+            renderIntent: .finalDelivery,
+            executionFPSBakeoffVariant: executionFPSBakeoffVariant
         )
     }
 }

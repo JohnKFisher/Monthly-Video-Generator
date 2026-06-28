@@ -13,6 +13,15 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
         let temporaryURLs: [URL]
     }
 
+    private struct TrackCodecDescription {
+        let fourcc: String
+        let mediaSubType: FourCharCode
+
+        var label: String {
+            "\(fourcc) (\(mediaSubType))"
+        }
+    }
+
     private let stillImageClipFactory: StillImageClipFactory
     private let captureDateOverlayFactory: CaptureDateOverlayFactory
     private let ffmpegHDRRenderer: FFmpegHDRRenderer
@@ -499,6 +508,240 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
         }
     }
 
+    func runFPSBakeoff(
+        timeline: Timeline,
+        style: StyleProfile,
+        exportProfile: ExportProfile,
+        baseOutputTarget: OutputTarget,
+        runDirectory: URL,
+        plexTVMetadata: PlexTVMetadata?,
+        chapters: [RenderChapter],
+        photoMaterializer: PhotoAssetMaterializing?,
+        writeDiagnosticsLog: Bool,
+        progressHandler: (@MainActor @Sendable (Double) -> Void)? = nil,
+        statusHandler: (@MainActor @Sendable (String) -> Void)? = nil,
+        artifactHandler: RenderArtifactHandler? = nil,
+        systemFFmpegFallbackHandler: SystemFFmpegFallbackHandler? = nil
+    ) async throws -> FPSBakeoffResult {
+        guard !timeline.segments.isEmpty else {
+            throw RenderError.noRenderableMedia
+        }
+        guard exportProfile.dynamicRange == .hdr, exportProfile.videoCodec == .hevc else {
+            throw RenderError.exportFailed("FPS bakeoff requires HDR HEVC export settings.")
+        }
+
+        try FileManager.default.createDirectory(at: runDirectory, withIntermediateDirectories: true)
+        let setupDiagnostics = RenderDiagnostics()
+        let requestedRenderSize = resolveRenderSize(from: timeline, policy: exportProfile.resolution)
+        let resolvedFrameRate = resolveFrameRate(from: timeline, policy: exportProfile.frameRate)
+        let renderSize = constrainedRenderSizeForExport(requestedSize: requestedRenderSize, profile: exportProfile)
+        var sharedTemporaryURLs: [URL] = []
+
+        reportStatus("Preparing shared bakeoff clips...", handler: statusHandler)
+        reportProgress(0.02, handler: progressHandler)
+        let clips = try await setupDiagnostics.measurePhase(.clipMaterialization) {
+            try await materializeInputClips(
+                segments: timeline.segments,
+                style: style,
+                renderSize: renderSize,
+                frameRate: resolvedFrameRate,
+                exportDynamicRange: exportProfile.dynamicRange,
+                exportBinaryMode: exportProfile.hdrFFmpegBinaryMode,
+                photoMaterializer: photoMaterializer,
+                temporaryURLs: &sharedTemporaryURLs,
+                diagnostics: setupDiagnostics,
+                progressHandler: { progress in
+                    self.reportProgress(0.02 + min(max(progress, 0), 1) * 0.18, handler: progressHandler)
+                },
+                statusHandler: statusHandler
+            )
+        }
+        guard !clips.isEmpty else {
+            cleanupTemporaryFiles(&sharedTemporaryURLs, diagnostics: setupDiagnostics)
+            throw RenderError.noRenderableMedia
+        }
+
+        let transitionDuration = effectiveTransitionDuration(clips: clips, requestedSeconds: style.crossfadeDurationSeconds)
+        let resolvedChapters = resolveOutputChapters(
+            requestedChapters: chapters,
+            timeline: timeline,
+            transitionDuration: transitionDuration,
+            container: exportProfile.container
+        )
+        let variants: [FPSBakeoffVariantID] = [.currentCFR, .mixedCadenceVFR, .stillAwareCFR]
+        var results: [FPSBakeoffVariantResult] = []
+
+        for (variantIndex, variantID) in variants.enumerated() {
+            if Task.isCancelled {
+                break
+            }
+            let variantProgressBase = 0.20 + (Double(variantIndex) / Double(variants.count)) * 0.78
+            let variantProgressEnd = 0.20 + (Double(variantIndex + 1) / Double(variants.count)) * 0.78
+            let variantTarget = OutputTarget(
+                directory: runDirectory,
+                baseFilename: "\(baseOutputTarget.baseFilename)__fps-bakeoff-\(variantID.filenameSuffix)"
+            )
+            let variantDiagnostics = RenderDiagnostics()
+            let variantStartedAt = Date()
+            let outputURL: URL
+            do {
+                outputURL = try OutputPathResolver.resolveUniqueURL(target: variantTarget, container: exportProfile.container)
+            } catch {
+                results.append(
+                    FPSBakeoffVariantResult(
+                        variant: variantID,
+                        outputPath: variantTarget.directory
+                            .appendingPathComponent(variantTarget.baseFilename)
+                            .appendingPathExtension(exportProfile.container.fileExtension)
+                            .path,
+                        diagnosticsLogPath: nil,
+                        backendSummary: nil,
+                        width: Int(renderSize.width.rounded()),
+                        height: Int(renderSize.height.rounded()),
+                        nominalFrameRate: resolvedFrameRate,
+                        fileSizeBytes: nil,
+                        elapsedSeconds: Date().timeIntervalSince(variantStartedAt),
+                        ffprobeFacts: nil,
+                        errorMessage: userFacingMessage(from: error)
+                    )
+                )
+                continue
+            }
+
+            var variantTemporaryURLs: [URL] = []
+            let workDirectory = runDirectory.appendingPathComponent("\(variantID.filenameSuffix)-work", isDirectory: true)
+            do {
+                try FileManager.default.createDirectory(at: workDirectory, withIntermediateDirectories: true)
+                variantDiagnostics.add("FPS bakeoff variant started: \(variantID.displayName)")
+                variantDiagnostics.add("Bakeoff work directory: \(workDirectory.path)")
+                let chapterMetadataURL = try makeChapterMetadataFileIfNeeded(
+                    chapters: resolvedChapters,
+                    temporaryURLs: &variantTemporaryURLs,
+                    diagnostics: variantDiagnostics,
+                    preferredURL: resolvedChapters.isEmpty ? nil : workDirectory.appendingPathComponent("chapters.ffmeta"),
+                    preservePreferredURL: true
+                )
+                let finalPlan = makeFFmpegRenderPlan(
+                    clips: clips,
+                    transitionDuration: transitionDuration,
+                    endFadeToBlackDurationSeconds: max(style.crossfadeDurationSeconds * 2, 0),
+                    outputURL: outputURL,
+                    renderSize: renderSize,
+                    frameRate: resolvedFrameRate,
+                    exportProfile: exportProfile,
+                    embeddedMetadata: plexTVMetadata?.embedded,
+                    chapters: resolvedChapters,
+                    chapterMetadataURL: chapterMetadataURL,
+                    executionOptions: RenderExecutionOptions(fpsBakeoffVariant: variantID.executionVariant)
+                )
+                let session = FFmpegProgressiveResumeSession(
+                    sessionID: UUID(),
+                    planSignature: "fps-bakeoff-\(variantID.rawValue)",
+                    outputDirectoryURL: runDirectory,
+                    outputBaseFilename: variantTarget.baseFilename,
+                    workDirectoryURL: workDirectory,
+                    finalOutputURL: outputURL,
+                    createdAt: Date(),
+                    updatedAt: Date(),
+                    state: .active
+                )
+                var mutableSession = session
+                guard let executionPlan = ffmpegProgressivePipelineBuilder.makeExecutionPlan(
+                    for: finalPlan,
+                    presentationOutputURL: { session.presentationOutputURL(for: $0) },
+                    batchOutputURL: { session.batchOutputURL(for: $0) },
+                    concatListURL: { session.concatListURL },
+                    concatOutputURL: { session.concatOutputURL },
+                    forceProgressive: true
+                ) else {
+                    throw RenderError.exportFailed("FPS bakeoff could not build a progressive execution plan for \(variantID.displayName).")
+                }
+                reportStatus("Running FPS bakeoff: \(variantID.displayName)...", handler: statusHandler)
+                let resolution = try await executeProgressiveFFmpegPlan(
+                    finalPlan,
+                    executionPlan: executionPlan,
+                    resumeSession: &mutableSession,
+                    binaryMode: exportProfile.hdrFFmpegBinaryMode,
+                    diagnostics: variantDiagnostics,
+                    temporaryURLs: &variantTemporaryURLs,
+                    progressHandler: { progress in
+                        let clamped = min(max(progress, 0), 1)
+                        self.reportProgress(variantProgressBase + clamped * (variantProgressEnd - variantProgressBase), handler: progressHandler)
+                    },
+                    statusHandler: statusHandler,
+                    artifactHandler: artifactHandler,
+                    systemFFmpegFallbackHandler: systemFFmpegFallbackHandler
+                )
+                variantDiagnostics.add("FPS bakeoff variant completed: \(variantID.displayName)")
+                cleanupTemporaryFiles(&variantTemporaryURLs, diagnostics: variantDiagnostics)
+                try? FileManager.default.removeItem(at: workDirectory)
+                let diagnosticsLogURL = writeDiagnosticsLog
+                    ? persistDiagnosticsReport(
+                        variantDiagnostics.renderReport(outcome: "success", error: nil),
+                        outputTarget: variantTarget,
+                        preferredURL: nil
+                    )
+                    : nil
+                let size = currentFileSizeBytes(at: outputURL).flatMap(int64Value(for:))
+                results.append(
+                    FPSBakeoffVariantResult(
+                        variant: variantID,
+                        outputPath: outputURL.path,
+                        diagnosticsLogPath: diagnosticsLogURL?.path,
+                        backendSummary: resolution.backendSummary(
+                            codec: exportProfile.videoCodec,
+                            dynamicRange: exportProfile.dynamicRange,
+                            hdrHEVCEncoderMode: exportProfile.hdrHEVCEncoderMode
+                        ),
+                        width: Int(renderSize.width.rounded()),
+                        height: Int(renderSize.height.rounded()),
+                        nominalFrameRate: resolvedFrameRate,
+                        fileSizeBytes: size,
+                        elapsedSeconds: Date().timeIntervalSince(variantStartedAt),
+                        ffprobeFacts: probeBakeoffOutputFacts(at: outputURL, ffprobeURL: resolution.selectedBinary.ffprobeURL),
+                        errorMessage: nil
+                    )
+                )
+            } catch {
+                cleanupTemporaryFiles(&variantTemporaryURLs, diagnostics: variantDiagnostics)
+                let diagnosticsLogURL = writeDiagnosticsLog
+                    ? persistDiagnosticsReport(
+                        variantDiagnostics.renderReport(outcome: "failure", error: error),
+                        outputTarget: variantTarget,
+                        preferredURL: nil
+                    )
+                    : nil
+                results.append(
+                    FPSBakeoffVariantResult(
+                        variant: variantID,
+                        outputPath: outputURL.path,
+                        diagnosticsLogPath: diagnosticsLogURL?.path,
+                        backendSummary: nil,
+                        width: Int(renderSize.width.rounded()),
+                        height: Int(renderSize.height.rounded()),
+                        nominalFrameRate: resolvedFrameRate,
+                        fileSizeBytes: currentFileSizeBytes(at: outputURL).flatMap(int64Value(for:)),
+                        elapsedSeconds: Date().timeIntervalSince(variantStartedAt),
+                        ffprobeFacts: nil,
+                        errorMessage: userFacingMessage(from: error)
+                    )
+                )
+                if error is CancellationError {
+                    break
+                }
+            }
+        }
+
+        cleanupTemporaryFiles(&sharedTemporaryURLs, diagnostics: setupDiagnostics)
+        reportProgress(1.0, handler: progressHandler)
+        reportStatus("FPS bakeoff complete.", handler: statusHandler)
+        return FPSBakeoffResult(
+            runDirectoryPath: runDirectory.path,
+            baselineVariant: .currentCFR,
+            variants: results
+        )
+    }
+
     private func shouldPreserveRecoverableProgressiveFailure(
         session: FFmpegProgressiveResumeSession,
         error: Error
@@ -510,6 +753,61 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
             return false
         }
         return session.hasRecoverableCheckpointProgress
+    }
+
+    private func probeBakeoffOutputFacts(at outputURL: URL, ffprobeURL: URL) -> FPSBakeoffFFprobeFacts? {
+        let process = Process()
+        process.executableURL = ffprobeURL
+        process.arguments = [
+            "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries",
+            "stream=codec_name,width,height,avg_frame_rate,r_frame_rate,duration,color_primaries,color_transfer,color_space",
+            "-of", "json",
+            outputURL.path
+        ]
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+        do {
+            try process.run()
+        } catch {
+            return nil
+        }
+        let stdout = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            return nil
+        }
+        guard
+            let root = try? JSONSerialization.jsonObject(with: stdout) as? [String: Any],
+            let streams = root["streams"] as? [[String: Any]],
+            let stream = streams.first
+        else {
+            return nil
+        }
+        let averageFrameRate = stream["avg_frame_rate"] as? String
+        let realFrameRate = stream["r_frame_rate"] as? String
+        return FPSBakeoffFFprobeFacts(
+            codecName: stream["codec_name"] as? String,
+            width: stream["width"] as? Int,
+            height: stream["height"] as? Int,
+            averageFrameRate: averageFrameRate,
+            realFrameRate: realFrameRate,
+            duration: stream["duration"] as? String,
+            colorPrimaries: stream["color_primaries"] as? String,
+            colorTransfer: stream["color_transfer"] as? String,
+            colorSpace: stream["color_space"] as? String,
+            isProbablyVFR: isProbablyVFR(averageFrameRate: averageFrameRate, realFrameRate: realFrameRate)
+        )
+    }
+
+    private func isProbablyVFR(averageFrameRate: String?, realFrameRate: String?) -> Bool? {
+        guard let averageFrameRate, let realFrameRate else {
+            return nil
+        }
+        return averageFrameRate != realFrameRate
     }
 
     private func makeFFmpegRenderPlan(
@@ -528,11 +826,13 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
         let ffmpegClips = clips.map {
             FFmpegRenderClip(
                 url: $0.assetURL,
+                ffmpegAudioURL: $0.ffmpegAudioURL,
                 durationSeconds: max($0.duration.seconds, 0.01),
                 includeAudio: $0.includeAudio,
                 hasAudioTrack: $0.audioTrack != nil,
                 colorInfo: $0.colorInfo,
                 sourceDescription: $0.sourceDescription,
+                sourceFrameRate: $0.sourceFrameRate,
                 captureDateOverlayURL: $0.captureDateOverlayURL,
                 auditInfo: $0.auditInfo
             )
@@ -559,7 +859,8 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
             embeddedMetadata: embeddedMetadata,
             chapters: chapters,
             chapterMetadataURL: chapterMetadataURL,
-            renderIntent: .finalDelivery
+            renderIntent: .finalDelivery,
+            executionFPSBakeoffVariant: executionOptions.fpsBakeoffVariant
         )
     }
 
@@ -1385,10 +1686,12 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
                     includeAudio: false,
                     sourceDescription: "title card '\(descriptor.resolvedTitle)'",
                     sourceColorInfo: .unknown,
+                    sourceFrameRate: nil,
                     captureDateOverlayText: nil,
                     captureDateOverlayURL: nil,
                     auditInfo: RenderClipAuditInfo(kind: .title, hasCaptureDateOverlay: false),
                     diagnostics: diagnostics,
+                    temporaryURLs: &temporaryURLs,
                     isTemporary: true,
                     exportDynamicRange: exportDynamicRange,
                     exportBinaryMode: exportBinaryMode
@@ -1452,10 +1755,12 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
                         includeAudio: false,
                         sourceDescription: "image \(item.filename)",
                         sourceColorInfo: sourceColorInfo,
+                        sourceFrameRate: nil,
                         captureDateOverlayText: captureDateOverlayText,
                         captureDateOverlayURL: captureDateOverlayURL,
                         auditInfo: RenderClipAuditInfo(kind: .still, hasCaptureDateOverlay: hasCaptureDateOverlay),
                         diagnostics: diagnostics,
+                        temporaryURLs: &temporaryURLs,
                         isTemporary: true,
                         exportDynamicRange: exportDynamicRange,
                         exportBinaryMode: exportBinaryMode
@@ -1500,10 +1805,12 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
                         includeAudio: true,
                         sourceDescription: "video \(item.filename)",
                         sourceColorInfo: item.colorInfo,
+                        sourceFrameRate: item.sourceFrameRate,
                         captureDateOverlayText: captureDateOverlayText,
                         captureDateOverlayURL: captureDateOverlayURL,
                         auditInfo: RenderClipAuditInfo(kind: .video, hasCaptureDateOverlay: hasCaptureDateOverlay),
                         diagnostics: diagnostics,
+                        temporaryURLs: &temporaryURLs,
                         isTemporary: false,
                         exportDynamicRange: exportDynamicRange,
                         exportBinaryMode: exportBinaryMode
@@ -1645,10 +1952,12 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
         includeAudio: Bool,
         sourceDescription: String,
         sourceColorInfo: ColorInfo,
+        sourceFrameRate: Double?,
         captureDateOverlayText: String?,
         captureDateOverlayURL: URL?,
         auditInfo: RenderClipAuditInfo,
         diagnostics: RenderDiagnostics,
+        temporaryURLs: inout [URL],
         isTemporary: Bool,
         exportDynamicRange: DynamicRange,
         exportBinaryMode: HDRFFmpegBinaryMode
@@ -1684,13 +1993,32 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
         let audioTrack = includeAudio ? (try? await asset.loadTracks(withMediaType: .audio).first) : nil
         let audioTrackDuration: CMTime?
         let audioTrackTimeRange: CMTimeRange?
+        let audioCodecDescription: String
+        let ffmpegAudioURL: URL?
         if let audioTrack {
             let timeRange = try? await audioTrack.load(.timeRange)
             audioTrackDuration = timeRange?.duration
             audioTrackTimeRange = timeRange
+            let audioCodec = await codecDescription(for: audioTrack)
+            audioCodecDescription = audioCodec.label
+            if shouldBridgeAudioForFFmpeg(codec: audioCodec) {
+                ffmpegAudioURL = try await makeFFmpegAudioBridge(
+                    from: asset,
+                    sourceDescription: sourceDescription,
+                    audioCodecDescription: audioCodecDescription,
+                    diagnostics: diagnostics
+                )
+                if let ffmpegAudioURL {
+                    temporaryURLs.append(ffmpegAudioURL)
+                }
+            } else {
+                ffmpegAudioURL = nil
+            }
         } else {
             audioTrackDuration = nil
             audioTrackTimeRange = nil
+            audioCodecDescription = "none"
+            ffmpegAudioURL = nil
         }
 
         let codecDescription = await videoCodecDescription(for: videoTrack)
@@ -1707,7 +2035,8 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
         diagnostics.add(
             "Clip ready: source=\(sourceDescription), asset=\(assetURL.path), clipDuration=\(format(clipDuration)), " +
             "assetDuration=\(format(assetDuration)), videoTrackRange=\(format(videoTrackRange)), " +
-            "audioTrackRange=\(format(audioTrackTimeRange)), codec=\(codecDescription), " +
+            "audioTrackRange=\(format(audioTrackTimeRange)), codec=\(codecDescription), audioCodec=\(audioCodecDescription), " +
+            "ffmpegAudioBridge=\(ffmpegAudioURL?.path ?? "none"), " +
             "colorPrimaries=\(resolvedColorInfo.colorPrimaries ?? "nil"), transfer=\(resolvedColorInfo.transferFunction ?? "nil"), " +
             "transferFlavor=\(resolvedColorInfo.transferFlavor.rawValue), hdrMetadata=\(resolvedColorInfo.hdrMetadataFlavor.rawValue), " +
             "isHDR=\(resolvedColorInfo.isHDR), temp=\(isTemporary), " +
@@ -1727,8 +2056,10 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
             preferredTransform: preferredTransform,
             naturalSize: naturalSize,
             sourceDescription: sourceDescription,
+            sourceFrameRate: sourceFrameRate,
             isTemporary: isTemporary,
             includeAudio: includeAudio,
+            ffmpegAudioURL: ffmpegAudioURL,
             colorInfo: resolvedColorInfo,
             captureDateOverlayText: captureDateOverlayText,
             captureDateOverlayURL: captureDateOverlayURL,
@@ -2377,8 +2708,10 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
         let preferredTransform: CGAffineTransform
         let naturalSize: CGSize
         let sourceDescription: String
+        let sourceFrameRate: Double?
         let isTemporary: Bool
         let includeAudio: Bool
+        let ffmpegAudioURL: URL?
         let colorInfo: ColorInfo
         let captureDateOverlayText: String?
         let captureDateOverlayURL: URL?
@@ -2399,15 +2732,61 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
     }
 
     private func videoCodecDescription(for track: AVAssetTrack) async -> String {
-        guard let formatDescriptions = try? await track.load(.formatDescriptions) else {
-            return "unknown"
-        }
-        guard let firstDescription = formatDescriptions.first else {
-            return "unknown"
+        await codecDescription(for: track).label
+    }
+
+    private func codecDescription(for track: AVAssetTrack) async -> TrackCodecDescription {
+        guard let formatDescriptions = try? await track.load(.formatDescriptions),
+              let firstDescription = formatDescriptions.first else {
+            return TrackCodecDescription(fourcc: "unknown", mediaSubType: 0)
         }
         let mediaSubType = CMFormatDescriptionGetMediaSubType(firstDescription)
-        let fourcc = fourCCString(mediaSubType)
-        return "\(fourcc) (\(mediaSubType))"
+        return TrackCodecDescription(fourcc: fourCCString(mediaSubType), mediaSubType: mediaSubType)
+    }
+
+    private func shouldBridgeAudioForFFmpeg(codec: TrackCodecDescription) -> Bool {
+        let normalizedFourCC = codec.fourcc.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return normalizedFourCC == "apac" ||
+            normalizedFourCC == "capa" ||
+            codec.mediaSubType == 0x6361_7061 ||
+            codec.mediaSubType == 0x6170_6163
+    }
+
+    private func makeFFmpegAudioBridge(
+        from asset: AVAsset,
+        sourceDescription: String,
+        audioCodecDescription: String,
+        diagnostics: RenderDiagnostics
+    ) async throws -> URL {
+        guard let exportSession = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) else {
+            throw RenderError.exportFailed(
+                "Unable to create an audio bridge for \(sourceDescription) with codec \(audioCodecDescription)."
+            )
+        }
+
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("monthly-video-generator-audio-\(UUID().uuidString)")
+            .appendingPathExtension("m4a")
+        try? FileManager.default.removeItem(at: outputURL)
+        exportSession.outputURL = outputURL
+        exportSession.outputFileType = .m4a
+
+        diagnostics.add(
+            "Creating FFmpeg audio bridge for \(sourceDescription): codec=\(audioCodecDescription), output=\(outputURL.path)"
+        )
+
+        do {
+            try await exportSession.export(to: outputURL, as: .m4a)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw RenderError.exportFailed(
+                "Unable to create an audio bridge for \(sourceDescription) with codec \(audioCodecDescription). \(describe(error))"
+            )
+        }
+
+        diagnostics.add("Created FFmpeg audio bridge for \(sourceDescription) at \(outputURL.path)")
+        return outputURL
     }
 
     private func resolvedColorInfo(

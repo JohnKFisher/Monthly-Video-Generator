@@ -46,6 +46,11 @@ struct MainWindowCommands: Commands {
             .keyboardShortcut("r")
             .disabled(!viewModel.canStartRender)
 
+            Button("Run FPS Bakeoff…") {
+                viewModel.runFPSBakeoff()
+            }
+            .disabled(!viewModel.canRunFPSBakeoff)
+
             Button("Cancel Render") {
                 viewModel.cancelRender()
             }

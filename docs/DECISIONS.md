@@ -53,3 +53,7 @@
 ## 2026-06-26
 
 - Decision: Treat the earlier cleanup-release `2.0.0` decision as superseded by the current source-controlled `1.0.0 (220)` maintenance identity. Rationale: the repository's active `VERSION`/`BUILD_NUMBER`, README, and status docs now describe the app as a feature-complete `1.0.0` personal release rather than an ongoing 2.x release line. Status: superseded earlier 2.0.0 release identity; approved current 1.0.0 (220) identity.
+
+## 2026-06-28
+
+- Decision: Promote the FPS bakeoff Plan 1 mixed-cadence policy to the normal HDR HEVC render default, using the progressive staging pipeline as needed, with title/opening-title sections held at 30 fps while still-image bodies use 5 fps. Rationale: the completed bakeoff showed a roughly 33% file-size reduction with matching HDR tags and acceptable local playback/visual sampling, and the user explicitly approved the switch while requiring smooth title motion. Status: approved.
