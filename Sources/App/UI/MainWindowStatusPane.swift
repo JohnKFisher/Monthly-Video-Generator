@@ -24,7 +24,7 @@ struct MainWindowLightTablePane: View {
             }
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                MainWindowSectionLabel(title: "Current Render", accent: MainWindowTheme.accentTeal)
+                MainWindowSectionLabel(title: "Preview & Status", accent: MainWindowTheme.accentTeal)
                 Spacer(minLength: 8)
                 Text(AppMetadata.versionBuildLabel)
                     .font(.caption.weight(.semibold))

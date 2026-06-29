@@ -4,64 +4,181 @@ import SwiftUI
 struct MainWindowExportPane: View {
     @ObservedObject var viewModel: MainWindowViewModel
 
+    @SceneStorage("MainWindowExportPane.isFilenameEditorExpanded")
+    private var isFilenameEditorExpanded = false
+
+    @SceneStorage("MainWindowExportPane.isDescriptionEditorExpanded")
+    private var isDescriptionEditorExpanded = false
+
     private let rowSpacing: CGFloat = 6
 
     var body: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: rowSpacing) {
-                Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: rowSpacing) {
-                    GridRow {
-                        Text("Series")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 74, alignment: .leading)
-                        TextField("Series Title", text: $viewModel.plexShowTitle)
-                    }
+                libraryMetadataSection
 
-                    GridRow {
-                        Text("Filename")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 74, alignment: .leading)
-                        TextField("Filename", text: $viewModel.outputFilename)
-                    }
-                }
+                Divider()
 
-                MainWindowCaption(text: "Series feeds Plex filenames and MP4 metadata.")
-
-                outputControls
-
-                MainWindowCaption(text: viewModel.outputDirectoryURL.path)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
-
-                MainWindowCaption(text: viewModel.outputNameAutomationDescription)
+                saveLocationSection
 
                 descriptionEditor
 
                 if viewModel.showsManualMonthYearOverride {
+                    Divider()
                     manualMonthYearOverrideSection
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } label: {
-            MainWindowSectionLabel(title: "Export", accent: MainWindowTheme.accentNavy)
+            MainWindowSectionLabel(title: "Video Details", accent: MainWindowTheme.accentNavy)
+        }
+    }
+
+    private var libraryMetadataSection: some View {
+        VStack(alignment: .leading, spacing: rowSpacing) {
+            Text("Library Metadata")
+                .font(.subheadline.weight(.medium))
+
+            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: rowSpacing) {
+                GridRow {
+                    Text("Series")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 88, alignment: .leading)
+                    TextField("Series Title", text: $viewModel.plexShowTitle)
+                }
+            }
+
+            MainWindowCaption(text: "Used for Plex metadata and the automatic filename.")
+            metadataStatusRow
+        }
+    }
+
+    private var metadataStatusRow: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                statusChip(viewModel.isOutputNameAutoManaged ? "Auto name" : "Custom name")
+                statusChip(viewModel.isPlexDescriptionAutoManaged ? "Auto description" : "Custom description")
+                statusChip(viewModel.showsManualMonthYearOverride ? "Manual month/year" : "Month/year from media")
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                statusChip(viewModel.isOutputNameAutoManaged ? "Auto name" : "Custom name")
+                statusChip(viewModel.isPlexDescriptionAutoManaged ? "Auto description" : "Custom description")
+                statusChip(viewModel.showsManualMonthYearOverride ? "Manual month/year" : "Month/year from media")
+            }
+        }
+    }
+
+    private func statusChip(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(.secondary.opacity(0.10), in: Capsule())
+    }
+
+    private var saveLocationSection: some View {
+        VStack(alignment: .leading, spacing: rowSpacing) {
+            Text("Save Location")
+                .font(.subheadline.weight(.medium))
+
+            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: rowSpacing) {
+                GridRow {
+                    Text("Final file")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 88, alignment: .leading)
+
+                    Text(viewModel.currentRenderResolvedOutputFilenamePreview)
+                        .font(.callout.weight(.semibold))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                }
+
+                GridRow {
+                    Text("Folder")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 88, alignment: .leading)
+
+                    Text(viewModel.outputDirectoryURL.path)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                }
+            }
+
+            if let collisionDescription = viewModel.currentRenderOutputCollisionDescription {
+                MainWindowCaption(text: collisionDescription)
+            }
+
+            filenameEditor
+            outputControls
+        }
+    }
+
+    @ViewBuilder
+    private var filenameEditor: some View {
+        if shouldShowFilenameEditor {
+            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: rowSpacing) {
+                GridRow {
+                    Text("Custom name")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 88, alignment: .leading)
+                    TextField("Filename", text: $viewModel.outputFilename)
+                }
+            }
+
+            MainWindowCaption(text: viewModel.outputNameAutomationDescription)
         }
     }
 
     private var outputControls: some View {
-        HStack(spacing: 10) {
-            Button(viewModel.isOutputNameAutoManaged ? "Regenerate" : "Use Auto Name") {
-                viewModel.useAutoGeneratedOutputName()
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                filenameButtons
+                Spacer(minLength: 0)
+                folderButtons
             }
 
-            Button("Choose Folder…") {
+            VStack(alignment: .leading, spacing: rowSpacing) {
+                filenameButtons
+                folderButtons
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var filenameButtons: some View {
+        if viewModel.isOutputNameAutoManaged {
+            Button("Customize Name…") {
+                isFilenameEditorExpanded.toggle()
+            }
+
+            Button("Regenerate") {
+                regenerateOutputName()
+            }
+        } else {
+            Button("Use Auto Name") {
+                regenerateOutputName()
+            }
+        }
+    }
+
+    private var folderButtons: some View {
+        HStack(spacing: 10) {
+            Button("Change Folder…") {
                 viewModel.chooseOutputFolder()
             }
             .disabled(!viewModel.canChooseOutputFolder)
 
-            Button("Reveal Folder") {
+            Button("Reveal") {
                 viewModel.openConfiguredOutputFolder()
             }
             .disabled(!viewModel.canOpenConfiguredOutputFolder)
@@ -77,22 +194,46 @@ struct MainWindowExportPane: View {
 
                 Spacer(minLength: 8)
 
-                Button(viewModel.isPlexDescriptionAutoManaged ? "Regenerate" : "Use Default") {
-                    viewModel.useDefaultPlexDescription()
-                }
+                descriptionButtons
             }
 
-            TextEditor(text: $viewModel.plexDescriptionText)
-                .font(.body)
-                .frame(minHeight: 56, idealHeight: 64)
+            if shouldShowDescriptionEditor {
+                TextEditor(text: $viewModel.plexDescriptionText)
+                    .font(.body)
+                    .frame(minHeight: 56, idealHeight: 64)
 
-            MainWindowCaption(text: viewModel.plexDescriptionAutomationDescription)
+                MainWindowCaption(text: viewModel.plexDescriptionAutomationDescription)
+            } else {
+                Text(descriptionPreview)
+                    .font(.callout)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var descriptionButtons: some View {
+        if viewModel.isPlexDescriptionAutoManaged {
+            Button("Edit…") {
+                isDescriptionEditorExpanded.toggle()
+            }
+
+            Button("Regenerate") {
+                regenerateDescription()
+            }
+        } else {
+            Button("Use Default") {
+                regenerateDescription()
+            }
         }
     }
 
     private var manualMonthYearOverrideSection: some View {
         VStack(alignment: .leading, spacing: rowSpacing) {
-            Text("Manual Month/Year Override")
+            Text("Month/Year for Naming")
                 .font(.subheadline)
                 .fontWeight(.medium)
             MainWindowCaption(text: viewModel.manualMonthYearOverrideMessage)
@@ -135,8 +276,34 @@ struct MainWindowExportPane: View {
                 }
             }
 
-            MainWindowCaption(text: "Use this only when folder or album media spans multiple months or is missing capture dates.")
+            MainWindowCaption(text: "Used only when the app cannot safely determine a single month/year from the selected media.")
         }
+    }
+
+    private var shouldShowFilenameEditor: Bool {
+        isFilenameEditorExpanded || !viewModel.isOutputNameAutoManaged
+    }
+
+    private var shouldShowDescriptionEditor: Bool {
+        isDescriptionEditorExpanded || !viewModel.isPlexDescriptionAutoManaged
+    }
+
+    private var descriptionPreview: String {
+        let trimmed = viewModel.plexDescriptionText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return "Description will be generated from the resolved month/year."
+        }
+        return trimmed
+    }
+
+    private func regenerateOutputName() {
+        viewModel.useAutoGeneratedOutputName()
+        isFilenameEditorExpanded = false
+    }
+
+    private func regenerateDescription() {
+        viewModel.useDefaultPlexDescription()
+        isDescriptionEditorExpanded = false
     }
 }
 

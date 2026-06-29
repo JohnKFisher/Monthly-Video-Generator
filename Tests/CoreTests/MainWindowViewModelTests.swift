@@ -110,6 +110,15 @@ final class MainWindowViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.writeDiagnosticsLog)
     }
 
+    func testResumableHDRCheckpointsDefaultToOffWhenUnset() {
+        let viewModel = makeViewModel(
+            coordinator: RenderCoordinatorSpy(preparation: makePreparation()),
+            preferencesStore: makePreferencesStore()
+        )
+
+        XCTAssertFalse(viewModel.preserveResumableHDRCheckpoints)
+    }
+
     func testSavedDiagnosticsChoicePersistsAcrossLaunches() {
         let preferencesStore = makePreferencesStore()
         let initialViewModel = makeViewModel(
@@ -125,6 +134,45 @@ final class MainWindowViewModelTests: XCTestCase {
         )
 
         XCTAssertTrue(restoredViewModel.writeDiagnosticsLog)
+    }
+
+    func testSavedResumableHDRCheckpointChoicePersistsAcrossLaunches() {
+        let preferencesStore = makePreferencesStore()
+        let initialViewModel = makeViewModel(
+            coordinator: RenderCoordinatorSpy(preparation: makePreparation()),
+            preferencesStore: preferencesStore
+        )
+
+        initialViewModel.preserveResumableHDRCheckpoints = true
+
+        let restoredViewModel = makeViewModel(
+            coordinator: RenderCoordinatorSpy(preparation: makePreparation()),
+            preferencesStore: preferencesStore
+        )
+
+        XCTAssertTrue(restoredViewModel.preserveResumableHDRCheckpoints)
+    }
+
+    func testSingleRenderPassesResumabilitySettingIntoExecutionOptions() async throws {
+        let coordinator = RenderCoordinatorSpy(preparation: makePreparation())
+        let viewModel = makeViewModel(
+            coordinator: coordinator,
+            preferencesStore: makePreferencesStore()
+        )
+        let directory = makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        viewModel.sourceMode = .folder
+        viewModel.selectedFolderURL = directory
+        viewModel.outputDirectoryURL = directory
+        viewModel.preserveResumableHDRCheckpoints = true
+
+        viewModel.startRender()
+        await waitUntil(message: "Expected render to pass execution options") {
+            coordinator.renderExecutionOptions.count == 1 && !viewModel.isRendering
+        }
+
+        XCTAssertEqual(coordinator.renderExecutionOptions.first?.preserveResumableHDRCheckpoints, true)
     }
 
     func testFocusedRunLayoutIsFalseAtFreshIdleState() {
@@ -2618,6 +2666,7 @@ private final class RenderCoordinatorSpy: RenderCoordinating, @unchecked Sendabl
     let artifactLabel: String?
     private(set) var prepareFolderRequests: [RenderRequest] = []
     private(set) var renderRequests: [RenderRequest] = []
+    private(set) var renderExecutionOptions: [RenderExecutionOptions] = []
     private(set) var fpsBakeoffRequests: [RenderRequest] = []
     private(set) var cancelCurrentRenderCallCount: Int = 0
     private(set) var pauseAfterCheckpointCallCount: Int = 0
@@ -2675,6 +2724,7 @@ private final class RenderCoordinatorSpy: RenderCoordinating, @unchecked Sendabl
     ) async throws -> RenderResult {
         let index = renderRequests.count
         renderRequests.append(request)
+        renderExecutionOptions.append(executionOptions)
         statusHandler?(writeDiagnosticsLog ? "Encoding with diagnostics" : "Encoding")
         progressHandler?(1.0)
 

@@ -103,6 +103,39 @@ final class PhotoKitAssetMaterializerTests: XCTestCase {
         XCTAssertEqual(materializationCounter.value, 1)
     }
 
+    func testCleanupMaterializedTemporaryFilesRemovesCachedTempCopies() async throws {
+        let materializedVideoURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("PhotoKitAssetMaterializerTests-cleanup-\(UUID().uuidString)")
+            .appendingPathExtension("mov")
+        try Data([0x01]).write(to: materializedVideoURL)
+
+        let materializer = PhotoKitAssetMaterializer(
+            videoInspectionLoader: { _ in
+                PhotoKitAssetMaterializer.LoadedVideoInspection(
+                    sourceFrameRate: 30,
+                    sourceAudioChannelCount: 2
+                )
+            },
+            videoFileMaterializer: { _, _ in
+                materializedVideoURL
+            }
+        )
+
+        _ = try await materializer.prepareItemsForSmartMedia(
+            [makePhotoVideoItem(localIdentifier: "video-1")],
+            inspectFrameRate: true,
+            inspectAudioChannels: true
+        )
+        _ = try await materializer.materializePhotoAsset(
+            localIdentifier: "video-1",
+            preferredFilename: "video.mov"
+        )
+
+        await materializer.cleanupMaterializedTemporaryFiles()
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: materializedVideoURL.path))
+    }
+
     func testPrepareItemsForSmartFrameRateRespectsTaskCancellation() async throws {
         let loaderStarted = expectation(description: "video asset loader started")
         let materializer = PhotoKitAssetMaterializer(

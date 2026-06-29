@@ -19,7 +19,8 @@ What works now:
 - Output filename collisions are surfaced before rendering by showing the versioned filename the app will use.
 - Settings for style/export defaults plus per-render title and caption editing.
 - Settings are still immediate-save controls, and the Settings UI now says so explicitly.
-- Plex/Infuse-oriented HDR HEVC exports with the current bundled FFmpeg/ffprobe packaging path and mixed-cadence progressive timing for smaller files.
+- Plex/Infuse-oriented HDR HEVC exports with the current bundled FFmpeg/ffprobe packaging path and mixed-cadence progressive timing; Smart video sections use standard source-fps buckets capped at 60 fps for Apple TV compatibility.
+- App-owned temporary render and Photos materialization files are cleaned up more aggressively, and resumable HDR checkpoint retention is off by default with an opt-in setting.
 - Packaged universal app builds that prefer native Apple Silicon execution.
 - About window with copyright credit and a link to the public GitHub repository.
 
@@ -29,7 +30,7 @@ Known limitations and trust warnings:
 - Real-library Photos/iCloud behavior still deserves occasional manual smoke testing because automated tests use test doubles.
 - Mixed-cadence HDR outputs should be checked in Plex/Infuse for direct-play behavior, seeking, and smooth motion around title cards and transitions after timing-policy changes.
 - The still-image path is intentionally conservative and can be slower than a more aggressive implementation.
-- The HDR recovery/resume path exists, but parts of that UX are still somewhat technical.
+- The HDR recovery/resume path exists, but checkpoint retention must be turned on in Settings before a paused or failed HDR render can be resumed.
 - Local packaged builds are ad-hoc signed by default. Developer ID release builds now have a documented path for signing the app and DMG, submitting to Apple notarization, and stapling the accepted ticket.
 
 Setup/runtime requirements:

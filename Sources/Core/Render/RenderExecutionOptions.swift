@@ -29,11 +29,19 @@ package enum FPSBakeoffVariant: String, CaseIterable, Codable, Sendable {
 }
 
 package struct RenderExecutionOptions: Equatable, Sendable {
-    package static let `default` = RenderExecutionOptions(fpsBakeoffVariant: .mixedCadenceVFR)
+    package static let `default` = RenderExecutionOptions(
+        fpsBakeoffVariant: .mixedCadenceVFR,
+        preserveResumableHDRCheckpoints: false
+    )
 
     package let fpsBakeoffVariant: FPSBakeoffVariant?
+    package let preserveResumableHDRCheckpoints: Bool
 
-    package init(fpsBakeoffVariant: FPSBakeoffVariant? = nil) {
+    package init(
+        fpsBakeoffVariant: FPSBakeoffVariant? = nil,
+        preserveResumableHDRCheckpoints: Bool = false
+    ) {
         self.fpsBakeoffVariant = fpsBakeoffVariant
+        self.preserveResumableHDRCheckpoints = preserveResumableHDRCheckpoints
     }
 }

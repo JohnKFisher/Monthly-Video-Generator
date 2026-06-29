@@ -467,7 +467,7 @@ final class RenderPipelineTests: XCTestCase {
         let warnings = manager.compatibilityWarnings(for: profile).map(\.message)
 
         XCTAssertTrue(warnings.contains { $0.contains("smallest 16:9 output tier") })
-        XCTAssertTrue(warnings.contains { $0.contains("Smart frame rate exports at 30 fps") })
+        XCTAssertTrue(warnings.contains { $0.contains("Smart frame rate lets HDR HEVC use mixed cadence") })
         XCTAssertTrue(warnings.contains { $0.contains("Smart audio chooses Mono") })
     }
 

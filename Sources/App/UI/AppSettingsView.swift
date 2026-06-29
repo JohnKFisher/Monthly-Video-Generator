@@ -133,6 +133,14 @@ struct AppSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            settingsSection("Storage") {
+                Toggle("Keep resumable HDR checkpoints", isOn: $viewModel.preserveResumableHDRCheckpoints)
+
+                Text("Off saves disk space by removing temporary HDR checkpoint files after pauses, failures, or cancellation. Turn it on only when you want failed or paused HDR renders to be resumable.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(.horizontal, 24)
         .padding(.top, 18)

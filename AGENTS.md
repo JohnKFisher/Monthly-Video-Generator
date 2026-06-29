@@ -444,6 +444,31 @@ If the project already has users, saved data, config files, scripts, documented 
 
 - About Screen of all apps must give copyright credit to "John Kenneth Fisher" and include a clickable link to the public GitHub page if one exists.
 
+## Project Search Exclusions
+
+Do not inspect generated, cached, packaged, or local-agent state unless the task directly requires it.
+
+Avoid reading, searching, or summarizing these paths by default:
+
+- `.build/`
+- `.swiftpm/`
+- `.home/`
+- `.claude/`
+- `dist/`
+- `output/`
+- `tmp/`
+- `third_party/ffmpeg/` binary payloads
+
+Use targeted commands that exclude those paths when doing broad repo discovery. Prefer source and docs paths such as:
+
+- `Sources/`
+- `Tests/`
+- `docs/`
+- `scripts/`
+- `Package.swift`
+- `.github/workflows/`
+
+Only inspect excluded paths when debugging build artifacts, packaged output, local cache behavior, bundled FFmpeg, or another issue that clearly lives there.
 
 ## Conditional Rule Triggers
 

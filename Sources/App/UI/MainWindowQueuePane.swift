@@ -48,7 +48,7 @@ struct MainWindowQueuePane: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } label: {
-            MainWindowSectionLabel(title: "Job Drawer", accent: MainWindowTheme.accentNavy)
+            MainWindowSectionLabel(title: "Queue", accent: MainWindowTheme.accentNavy)
         }
         .alert(
             "Remove queued job?",

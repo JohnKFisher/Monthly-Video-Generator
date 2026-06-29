@@ -34,7 +34,7 @@ struct MainWindowStylePane: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } label: {
-            MainWindowSectionLabel(title: "Title", accent: MainWindowTheme.accentPeach)
+            MainWindowSectionLabel(title: "Opening Title", accent: MainWindowTheme.accentPeach)
         }
     }
 }

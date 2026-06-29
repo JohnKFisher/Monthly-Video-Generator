@@ -78,6 +78,12 @@ public final class PhotoKitAssetMaterializer: PhotoAssetMaterializing, @unchecke
         func store(_ url: URL, for localIdentifier: String) {
             materializedVideoURLs[localIdentifier] = url
         }
+
+        func takeAllURLs() -> [URL] {
+            let urls = Array(materializedVideoURLs.values)
+            materializedVideoURLs.removeAll()
+            return urls
+        }
     }
 
     private enum ActiveRequestID: Hashable {
@@ -368,6 +374,14 @@ public final class PhotoKitAssetMaterializer: PhotoAssetMaterializing, @unchecke
                 resourceManager.cancelDataRequest(resourceRequestID)
             }
         }
+    }
+
+    public func cleanupMaterializedTemporaryFiles() async {
+        let urls = await materializedVideoCache.takeAllURLs()
+        for url in urls {
+            try? fileManager.removeItem(at: url)
+        }
+        Self.cleanupTemporaryAssetDirectory(fileManager: fileManager)
     }
 
     public func materializePhotoAsset(localIdentifier: String, preferredFilename: String) async throws -> URL {
@@ -826,9 +840,27 @@ public final class PhotoKitAssetMaterializer: PhotoAssetMaterializing, @unchecke
         fileManager: FileManager
     ) -> URL {
         let sanitizedID = localIdentifier.replacingOccurrences(of: "/", with: "-")
-        let directory = fileManager.temporaryDirectory.appendingPathComponent("MonthlyVideoGenerator/Photos", isDirectory: true)
+        let directory = temporaryAssetDirectory(fileManager: fileManager)
         try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory.appendingPathComponent("\(sanitizedID)-\(UUID().uuidString)").appendingPathExtension(preferredExtension)
+    }
+
+    private static func cleanupTemporaryAssetDirectory(fileManager: FileManager) {
+        let directory = temporaryAssetDirectory(fileManager: fileManager)
+        guard let urls = try? fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) else {
+            return
+        }
+        for url in urls {
+            try? fileManager.removeItem(at: url)
+        }
+    }
+
+    private static func temporaryAssetDirectory(fileManager: FileManager) -> URL {
+        fileManager.temporaryDirectory.appendingPathComponent("MonthlyVideoGenerator/Photos", isDirectory: true)
     }
 
     private static func preferredVideoResource(for asset: PHAsset) -> PHAssetResource? {

@@ -77,7 +77,7 @@ struct MainWindowInputPane: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } label: {
-            MainWindowSectionLabel(title: "Input", accent: MainWindowTheme.accentTeal)
+            MainWindowSectionLabel(title: "Source", accent: MainWindowTheme.accentTeal)
         }
     }
 }

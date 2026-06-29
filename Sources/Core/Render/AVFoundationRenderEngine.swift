@@ -167,6 +167,7 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
                 to: liveDiagnosticsLogURL
             )
         }
+        AppOwnedTemporaryDirectoryCleaner.cleanDefaultTemporaryDirectories()
         var temporaryURLs: [URL] = []
         var progressiveResumeSession: FFmpegProgressiveResumeSession?
         var renderedOutputURL: URL?
@@ -328,7 +329,8 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
                         progressHandler: progressHandler,
                         statusHandler: statusHandler,
                         artifactHandler: artifactHandler,
-                        systemFFmpegFallbackHandler: systemFFmpegFallbackHandler
+                        systemFFmpegFallbackHandler: systemFFmpegFallbackHandler,
+                        preserveResumableCheckpoints: executionOptions.preserveResumableHDRCheckpoints
                     )
                 }
                 ffmpegProgressiveResumeStore.removeSession(resumeSession)
@@ -442,12 +444,21 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
             let preservedResumableFailure: Bool
             if let progressiveResumeSession,
                case RenderError.paused = error {
-                diagnostics.add(
-                    "Render paused with resumable HDR session preserved: sessionID=\(progressiveResumeSession.sessionID.uuidString), " +
-                        "workDirectory=\(progressiveResumeSession.workDirectoryURL.path)"
-                )
-                preservedResumableFailure = false
+                if executionOptions.preserveResumableHDRCheckpoints {
+                    diagnostics.add(
+                        "Render paused with resumable HDR session preserved: sessionID=\(progressiveResumeSession.sessionID.uuidString), " +
+                            "workDirectory=\(progressiveResumeSession.workDirectoryURL.path)"
+                    )
+                } else {
+                    ffmpegProgressiveResumeStore.removeSession(progressiveResumeSession)
+                    diagnostics.add(
+                        "Render paused; resumable HDR checkpoints removed because resumability is disabled: " +
+                            "sessionID=\(progressiveResumeSession.sessionID.uuidString)"
+                    )
+                }
+                preservedResumableFailure = executionOptions.preserveResumableHDRCheckpoints
             } else if var progressiveResumeSession,
+                      executionOptions.preserveResumableHDRCheckpoints,
                       shouldPreserveRecoverableProgressiveFailure(session: progressiveResumeSession, error: error) {
                 do {
                     try ffmpegProgressiveResumeStore.markRecoverableFailure(&progressiveResumeSession)
@@ -670,7 +681,8 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
                     },
                     statusHandler: statusHandler,
                     artifactHandler: artifactHandler,
-                    systemFFmpegFallbackHandler: systemFFmpegFallbackHandler
+                    systemFFmpegFallbackHandler: systemFFmpegFallbackHandler,
+                    preserveResumableCheckpoints: false
                 )
                 variantDiagnostics.add("FPS bakeoff variant completed: \(variantID.displayName)")
                 cleanupTemporaryFiles(&variantTemporaryURLs, diagnostics: variantDiagnostics)
@@ -704,6 +716,7 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
                 )
             } catch {
                 cleanupTemporaryFiles(&variantTemporaryURLs, diagnostics: variantDiagnostics)
+                try? FileManager.default.removeItem(at: workDirectory)
                 let diagnosticsLogURL = writeDiagnosticsLog
                     ? persistDiagnosticsReport(
                         variantDiagnostics.renderReport(outcome: "failure", error: error),
@@ -1069,7 +1082,8 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
         progressHandler: (@MainActor @Sendable (Double) -> Void)?,
         statusHandler: (@MainActor @Sendable (String) -> Void)?,
         artifactHandler: RenderArtifactHandler?,
-        systemFFmpegFallbackHandler: SystemFFmpegFallbackHandler?
+        systemFFmpegFallbackHandler: SystemFFmpegFallbackHandler?,
+        preserveResumableCheckpoints: Bool = true
     ) async throws -> FFmpegBinaryResolution {
         try ffmpegProgressiveResumeStore.markActive(&resumeSession)
         let resolution = try await ffmpegHDRRenderer.resolveBinary(
@@ -1154,7 +1168,11 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
             )
             try ffmpegProgressiveResumeStore.markPresentationCompleted(index, session: &resumeSession)
             completedWeight += stageWeight
-            try pauseProgressiveRenderIfRequested(session: &resumeSession, diagnostics: diagnostics)
+            try pauseProgressiveRenderIfRequested(
+                session: &resumeSession,
+                diagnostics: diagnostics,
+                preserveResumableCheckpoints: preserveResumableCheckpoints
+            )
         }
 
         for batch in executionPlan.batchPlans {
@@ -1199,7 +1217,11 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
                 let presentationURL = executionPlan.presentationPlans[sourceClipIndex].outputURL
                 removePersistentArtifact(presentationURL, diagnostics: diagnostics)
             }
-            try pauseProgressiveRenderIfRequested(session: &resumeSession, diagnostics: diagnostics)
+            try pauseProgressiveRenderIfRequested(
+                session: &resumeSession,
+                diagnostics: diagnostics,
+                preserveResumableCheckpoints: preserveResumableCheckpoints
+            )
         }
 
         if concatAlreadyCompleted {
@@ -1263,7 +1285,11 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
                 removePersistentArtifact(batch.plan.outputURL, diagnostics: diagnostics)
             }
             removePersistentArtifact(executionPlan.concatListURL, diagnostics: diagnostics)
-            try pauseProgressiveRenderIfRequested(session: &resumeSession, diagnostics: diagnostics)
+            try pauseProgressiveRenderIfRequested(
+                session: &resumeSession,
+                diagnostics: diagnostics,
+                preserveResumableCheckpoints: preserveResumableCheckpoints
+            )
         }
 
         let packagingCommand = try ffmpegCommandBuilder.buildPackagingCommand(
@@ -1402,7 +1428,8 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
 
     private func pauseProgressiveRenderIfRequested(
         session: inout FFmpegProgressiveResumeSession,
-        diagnostics: RenderDiagnostics
+        diagnostics: RenderDiagnostics,
+        preserveResumableCheckpoints: Bool
     ) throws {
         guard ffmpegProgressivePauseState.isPauseRequested else {
             return
@@ -1411,8 +1438,13 @@ public final class AVFoundationRenderEngine: @unchecked Sendable {
         diagnostics.add(
             "HDR progressive pause checkpoint reached: sessionID=\(session.sessionID.uuidString), workDirectory=\(session.workDirectoryURL.path)"
         )
+        if preserveResumableCheckpoints {
+            throw RenderError.paused(
+                "Render paused after a safe HDR checkpoint. Reopen the app and start the same render again to resume."
+            )
+        }
         throw RenderError.paused(
-            "Render paused after a safe HDR checkpoint. Reopen the app and start the same render again to resume."
+            "Render paused after a safe HDR checkpoint. Temporary checkpoint files were removed because resumability is turned off."
         )
     }
 

@@ -169,7 +169,7 @@ public final class ExportProfileManager {
         case .smart:
             warnings.append(
                 ExportCompatibilityWarning(
-                    "Smart frame rate exports at 30 fps unless any selected video is 50 fps or higher, then it exports at 60 fps."
+                    "Smart frame rate lets HDR HEVC use mixed cadence by default: stills render at 5 fps, title sections stay at 30 fps, and video sections follow standard source-fps buckets up to 60 fps."
                 )
             )
         case .fps60:

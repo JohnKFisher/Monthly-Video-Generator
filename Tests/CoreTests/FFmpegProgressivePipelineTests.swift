@@ -378,6 +378,20 @@ final class FFmpegProgressivePipelineTests: XCTestCase {
         XCTAssertEqual(executionPlan.slices.map(\.preferredFrameRate), [30, 30, 5, 30, 60])
     }
 
+    func testMixedCadenceCapsHighFrameRateVideoBucketsAtSixtyFPS() throws {
+        let builder = FFmpegHDRProgressivePipelineBuilder()
+        let executionPlan = try XCTUnwrap(
+            makeExecutionPlan(
+                builder: builder,
+                plan: makeHighFrameRateHDRPlan(variant: .mixedCadenceVFR),
+                forceProgressive: true
+            )
+        )
+
+        XCTAssertEqual(executionPlan.presentationPlans.map(\.frameRate), [60, 60])
+        XCTAssertEqual(executionPlan.slices.map(\.preferredFrameRate), [60, 60, 60])
+    }
+
     func testStillAwareCFRBakeoffOnlyLowersStillPresentationRate() throws {
         let builder = FFmpegHDRProgressivePipelineBuilder()
         let executionPlan = try XCTUnwrap(
@@ -436,6 +450,28 @@ final class FFmpegProgressivePipelineTests: XCTestCase {
                 makeHDRClip(index: 0, kind: .title, sourceFrameRate: nil),
                 makeHDRClip(index: 1, kind: .still, sourceFrameRate: nil),
                 makeHDRClip(index: 2, kind: .video, sourceFrameRate: 60)
+            ],
+            transitionDurationSeconds: 0.75,
+            endFadeToBlackDurationSeconds: 1.5,
+            outputURL: URL(fileURLWithPath: "/tmp/final.mp4"),
+            renderSize: CGSize(width: 3840, height: 2160),
+            frameRate: 60,
+            audioLayout: .stereo,
+            bitrateMode: .sizeFirst,
+            container: .mp4,
+            videoCodec: .hevc,
+            dynamicRange: .hdr,
+            hdrHEVCEncoderMode: .automatic,
+            renderIntent: .finalDelivery,
+            executionFPSBakeoffVariant: variant
+        )
+    }
+
+    private func makeHighFrameRateHDRPlan(variant: FPSBakeoffVariant?) -> FFmpegRenderPlan {
+        FFmpegRenderPlan(
+            clips: [
+                makeHDRClip(index: 0, kind: .video, sourceFrameRate: 119.88),
+                makeHDRClip(index: 1, kind: .video, sourceFrameRate: 60)
             ],
             transitionDurationSeconds: 0.75,
             endFadeToBlackDurationSeconds: 1.5,
