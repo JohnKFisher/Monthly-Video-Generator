@@ -64,7 +64,7 @@ final class RunReportServiceTests: XCTestCase {
         XCTAssertEqual(json["openingTitlePreviewCount"] as? Int, 10)
     }
 
-    func testRunReportIncludesBakeoffMetricsWhenProvided() throws {
+    func testRunReportIncludesRenderMetricsWhenProvided() throws {
         let outputDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: outputDirectory) }
@@ -132,7 +132,7 @@ final class RunReportServiceTests: XCTestCase {
             ]
         )
 
-        let reportURL = outputDirectory.appendingPathComponent("bakeoff-report.json")
+        let reportURL = outputDirectory.appendingPathComponent("render-report.json")
         try RunReportService().write(report, to: reportURL)
         let data = try Data(contentsOf: reportURL)
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])

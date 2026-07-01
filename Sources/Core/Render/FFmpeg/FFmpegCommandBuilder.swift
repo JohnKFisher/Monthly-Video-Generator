@@ -1131,7 +1131,7 @@ private extension FFmpegRenderPlan {
             chapters: chapters,
             chapterMetadataURL: chapterMetadataURL,
             renderIntent: .finalDelivery,
-            executionFPSBakeoffVariant: executionFPSBakeoffVariant
+            cadencePolicy: cadencePolicy
         )
     }
 }

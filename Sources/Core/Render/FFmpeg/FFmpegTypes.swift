@@ -470,7 +470,7 @@ struct FFmpegRenderPlan: Equatable, Sendable {
     let chapters: [RenderChapter]
     let chapterMetadataURL: URL?
     let renderIntent: FFmpegRenderIntent
-    let executionFPSBakeoffVariant: FPSBakeoffVariant?
+    let cadencePolicy: RenderCadencePolicy?
 
     init(
         clips: [FFmpegRenderClip],
@@ -491,7 +491,7 @@ struct FFmpegRenderPlan: Equatable, Sendable {
         chapters: [RenderChapter] = [],
         chapterMetadataURL: URL? = nil,
         renderIntent: FFmpegRenderIntent = .finalDelivery,
-        executionFPSBakeoffVariant: FPSBakeoffVariant? = nil
+        cadencePolicy: RenderCadencePolicy? = nil
     ) {
         self.clips = clips
         self.assemblySlices = assemblySlices
@@ -511,7 +511,7 @@ struct FFmpegRenderPlan: Equatable, Sendable {
         self.chapters = chapters
         self.chapterMetadataURL = chapterMetadataURL
         self.renderIntent = renderIntent
-        self.executionFPSBakeoffVariant = executionFPSBakeoffVariant
+        self.cadencePolicy = cadencePolicy
     }
 
     var capabilityRequirements: FFmpegCapabilityRequirements {

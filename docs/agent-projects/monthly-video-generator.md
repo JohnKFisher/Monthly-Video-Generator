@@ -35,6 +35,8 @@ Prefer setup-first, preset-first, and ready/not-ready guidance. Reduce cognitive
 
 If scripts exist, prefer the project's documented test/build scripts. For SwiftPM verification, a clean scratch path under `/private/tmp` may be useful when stale `.build` or signing/xattr issues appear.
 
+In Codex, run `./scripts/test.sh` with `sandbox_permissions=require_escalated` on the first attempt. The default Codex sandbox is known to fail before tests run because SwiftPM/SwiftUI macro plugin startup hits `sandbox-exec` / plugin-server errors. Do not spend a first run rediscovering that failure.
+
 Good defaults:
 
 - docs/copy-only: `git diff --check`,

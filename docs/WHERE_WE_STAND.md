@@ -17,6 +17,7 @@ What works now:
 - Setup-first main window flow with body-level source selection, a Light Table render preview, ready/not-ready guidance, optional batch queue support, and pause-after-current-item behavior.
 - Queue job removal/clear actions now ask for confirmation, and full-year Photos queue scans can be cancelled while scanning.
 - Output filename collisions are surfaced before rendering by showing the versioned filename the app will use.
+- Successful renders now show a clear finished-movie summary with the filename, folder, and quick reveal/open actions before diagnostic details.
 - Settings for style/export defaults plus per-render title, caption, save location, and movie-library details. Export settings are preset-first, with technical encoding controls kept behind Advanced.
 - Settings are still immediate-save controls, and the Settings UI now says so explicitly.
 - Plex/Infuse-oriented HDR HEVC exports with the current bundled FFmpeg/ffprobe packaging path and mixed-cadence progressive timing; Smart video sections use standard source-fps buckets capped at 60 fps for Apple TV compatibility.

@@ -86,4 +86,6 @@ Any rule that reasonably applies to multiple projects belongs in a universal con
 
 Verification is required, but scale it to risk. Prefer the cheapest meaningful check. Batch heavyweight checks after coherent related edits. Do not rerun the same failing command without a changed hypothesis.
 
+Codex-specific SwiftPM rule for this repository: do not run `./scripts/test.sh` inside the default Codex sandbox. Request escalation for `./scripts/test.sh` on the first attempt. The sandboxed path is known to fail before tests run because SwiftPM/SwiftUI macro plugin startup hits `sandbox-exec` / plugin-server errors; trying it first wastes tokens and time. The script also refuses to run when it detects `CODEX_SANDBOX` so failures stay short if this rule is missed.
+
 Keep final reports proportional to task size and risk. For tiny/local changes, one or two sentences is enough: what changed and the narrow check performed. For normal/risky changes, report what changed, what was checked, what passed/failed, meaningful skipped checks, and known limitations.

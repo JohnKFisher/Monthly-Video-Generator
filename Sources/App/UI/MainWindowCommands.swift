@@ -32,7 +32,7 @@ struct MainWindowCommands: Commands {
             }
             .disabled(!viewModel.canOpenConfiguredOutputFolder)
 
-            Button("Reveal Last Export") {
+            Button("Reveal Last Movie") {
                 viewModel.revealLastRenderedOutput()
             }
             .keyboardShortcut("R", modifiers: [.command, .shift])
@@ -45,11 +45,6 @@ struct MainWindowCommands: Commands {
             }
             .keyboardShortcut("r")
             .disabled(!viewModel.canStartRender)
-
-            Button("Run FPS Bakeoff…") {
-                viewModel.runFPSBakeoff()
-            }
-            .disabled(!viewModel.canRunFPSBakeoff)
 
             Button("Cancel Render") {
                 viewModel.cancelRender()

@@ -41,17 +41,6 @@ protocol RenderCoordinating: AnyObject, Sendable {
         systemFFmpegFallbackHandler: SystemFFmpegFallbackHandler?,
         executionOptions: RenderExecutionOptions
     ) async throws -> RenderResult
-    func runFPSBakeoff(
-        preparation: RenderPreparation,
-        request: RenderRequest,
-        runDirectory: URL,
-        photoMaterializer: PhotoAssetMaterializing?,
-        writeDiagnosticsLog: Bool,
-        progressHandler: RenderProgressHandler,
-        statusHandler: RenderStatusHandler,
-        artifactHandler: RenderArtifactSnapshotHandler,
-        systemFFmpegFallbackHandler: SystemFFmpegFallbackHandler?
-    ) async throws -> FPSBakeoffResult
     func cancelCurrentRender()
     func requestPauseAfterCheckpoint()
 }
@@ -154,16 +143,34 @@ final class MainWindowViewModel: ObservableObject {
         let outputPath: String
         let rows: [Row]
 
+        var outputFilename: String {
+            guard !outputPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return ""
+            }
+            return URL(fileURLWithPath: outputPath).lastPathComponent
+        }
+
+        var outputFolderPath: String {
+            guard !outputPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return ""
+            }
+            return URL(fileURLWithPath: outputPath).deletingLastPathComponent().path
+        }
+
         var alertMessage: String {
             var lines: [String] = []
             if outputPath.isEmpty {
-                lines.append("The slideshow was exported successfully.")
+                lines.append("Your movie is ready.")
             } else {
-                lines.append(outputPath)
+                lines.append("Your movie is ready.")
+                lines.append("")
+                lines.append("File: \(outputFilename)")
+                lines.append("Folder: \(outputFolderPath)")
             }
 
             if !rows.isEmpty {
                 lines.append("")
+                lines.append("Output details:")
                 lines.append(contentsOf: rows.map(\.displayLine))
             }
 
@@ -192,12 +199,27 @@ final class MainWindowViewModel: ObservableObject {
         let totalJobCount: Int
         let lastOutputPath: String
 
+        var lastOutputFilename: String {
+            guard !lastOutputPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return ""
+            }
+            return URL(fileURLWithPath: lastOutputPath).lastPathComponent
+        }
+
+        var lastOutputFolderPath: String {
+            guard !lastOutputPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return ""
+            }
+            return URL(fileURLWithPath: lastOutputPath).deletingLastPathComponent().path
+        }
+
         var alertMessage: String {
             let noun = totalJobCount == 1 ? "job" : "jobs"
-            var lines = ["Completed \(completedJobCount) of \(totalJobCount) queued \(noun)."]
+            var lines = ["Batch exports complete.", "Completed \(completedJobCount) of \(totalJobCount) queued \(noun)."]
             if !lastOutputPath.isEmpty {
                 lines.append("")
-                lines.append(lastOutputPath)
+                lines.append("Last file: \(lastOutputFilename)")
+                lines.append("Folder: \(lastOutputFolderPath)")
             }
             return lines.joined(separator: "\n")
         }
@@ -463,7 +485,7 @@ final class MainWindowViewModel: ObservableObject {
     @Published private(set) var isQueuePauseRequested: Bool = false
     @Published private(set) var isPreparingYearQueue: Bool = false
     @Published private(set) var preparingYearQueueTargetYear: Int?
-    @Published private(set) var renderCompleteAlertTitle: String = "Render Complete"
+    @Published private(set) var renderCompleteAlertTitle: String = "Movie Ready"
     @Published var showRenderCompleteAlert: Bool = false
     @Published var pendingSystemFFmpegFallbackConfirmation: SystemFFmpegFallbackConfirmation?
 
@@ -747,10 +769,6 @@ final class MainWindowViewModel: ObservableObject {
         currentRenderReadiness.isReady
     }
 
-    var canRunFPSBakeoff: Bool {
-        canStartRender
-    }
-
     var canChooseInputFolder: Bool {
         !isRendering && !isPreparingYearQueue
     }
@@ -765,6 +783,14 @@ final class MainWindowViewModel: ObservableObject {
 
     var canRevealLastRenderedOutput: Bool {
         !lastOutputPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var lastOutputFilename: String {
+        Self.outputFilenameDisplay(from: lastOutputPath)
+    }
+
+    var lastOutputFolderPath: String {
+        Self.outputFolderPathDisplay(from: lastOutputPath)
     }
 
     var canResetExportSettings: Bool {
@@ -906,10 +932,10 @@ final class MainWindowViewModel: ObservableObject {
             return "Queue running. Completed \(completedCount) of \(queuedRenderJobs.count) job(s)."
         }
         if pausedCount > 0 {
-            return "Queue paused by user. Paused \(pausedCount) job(s), queued \(queuedCount) job(s)."
+            return "Batch exports paused. Paused \(pausedCount) job(s), queued \(queuedCount) job(s)."
         }
         if failedCount > 0 {
-            return "Queue paused for review. Failed \(failedCount) job(s), queued \(queuedCount) job(s)."
+            return "Batch exports paused for review. Failed \(failedCount) job(s), queued \(queuedCount) job(s)."
         }
         return "Queued \(queuedCount) job(s). Completed \(completedCount) job(s)."
     }
@@ -1053,9 +1079,14 @@ final class MainWindowViewModel: ObservableObject {
             return lastSingleRenderCompletionSummary.alertMessage
         }
         if lastOutputPath.isEmpty {
-            return "The slideshow was exported successfully."
+            return "Your movie is ready."
         }
-        return lastOutputPath
+        return [
+            "Your movie is ready.",
+            "",
+            "File: \(lastOutputFilename)",
+            "Folder: \(lastOutputFolderPath)"
+        ].joined(separator: "\n")
     }
 
     func monthLabel(for month: Int) -> String {
@@ -1070,6 +1101,22 @@ final class MainWindowViewModel: ObservableObject {
         "Jan", "Feb", "Mar", "Apr", "May", "Jun",
         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
     ]
+
+    private static func outputFilenameDisplay(from path: String) -> String {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return ""
+        }
+        return URL(fileURLWithPath: trimmed).lastPathComponent
+    }
+
+    private static func outputFolderPathDisplay(from path: String) -> String {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return ""
+        }
+        return URL(fileURLWithPath: trimmed).deletingLastPathComponent().path
+    }
 
     private func preferredQueueDetailJob() -> QueuedRenderJob? {
         queuedRenderJobs.first { $0.state == .running } ??
@@ -1321,18 +1368,6 @@ final class MainWindowViewModel: ObservableObject {
         }
     }
 
-    func runFPSBakeoff() {
-        guard canRunFPSBakeoff else { return }
-
-        let snapshot = makeCurrentRenderSnapshot()
-        renderTask = Task {
-            await performFPSBakeoff(snapshot: snapshot)
-            await MainActor.run {
-                self.renderTask = nil
-            }
-        }
-    }
-
     func addCurrentSettingsToQueue() {
         let snapshot = makeCurrentRenderSnapshot()
 
@@ -1477,106 +1512,12 @@ final class MainWindowViewModel: ObservableObject {
                 progressMapper: { $0 },
                 syncLiveState: true
             )
-            finishSuccessfulSingleRun(status: "Render complete")
+            finishSuccessfulSingleRun(status: "Movie ready")
         } catch {
             if case let RenderError.paused(message) = error {
                 finishPausedSingleRun(message)
                 return
             }
-            finishFailedRun(error)
-        }
-    }
-
-    private func performFPSBakeoff(snapshot: QueuedRenderSnapshot) async {
-        beginRenderRun(status: "Preparing FPS bakeoff...", initialProgress: 0.01)
-        activeRenderIdentity = makeActiveRenderIdentity(
-            snapshot: snapshot,
-            drawerDescription: "FPS bakeoff in progress",
-            queuedJobID: nil
-        )
-
-        do {
-            let monthYear = previewMonthYear(for: snapshot)
-            let style = buildStyle(for: monthYear, snapshot: snapshot)
-            let preparedSession = try await prepareRenderSession(
-                snapshot: snapshot,
-                style: style,
-                monthYear: monthYear,
-                requiresSmartFrameRateInspection: snapshot.selectedFrameRatePolicy == .smart,
-                requiresSmartAudioInspection: snapshot.selectedAudioLayout == .smart,
-                progressMapper: { 0.01 + $0 * 0.14 },
-                syncLiveState: true
-            )
-            let exportResolution = resolveExportProfile(
-                snapshot: snapshot,
-                resolution: snapshot.selectedResolutionPolicy.normalized,
-                frameRate: snapshot.selectedFrameRatePolicy,
-                dynamicRange: snapshot.selectedDynamicRange,
-                audioLayout: snapshot.selectedAudioLayout,
-                hdrHEVCEncoderMode: snapshot.selectedHDRHEVCEncoderMode,
-                hdrX265Speed: snapshot.selectedHDRX265Speed,
-                items: preparedSession.preparation.items
-            )
-            guard exportResolution.effectiveProfile.dynamicRange == .hdr,
-                  exportResolution.effectiveProfile.videoCodec == .hevc else {
-                throw RenderError.exportFailed("FPS bakeoff requires HDR HEVC export settings. Switch Range to HDR and Codec to HEVC, or reset to Plex defaults.")
-            }
-            warnings = preparedSession.preparation.warnings + exportResolution.warnings.map(\.message)
-            let plexRenderDetails = try resolvePlexRenderDetails(
-                preparedSession: preparedSession,
-                fallbackMonthYear: monthYear,
-                exportProfile: exportResolution.effectiveProfile,
-                outputBaseFilenameOverride: nil,
-                snapshot: snapshot,
-                syncLiveState: true
-            )
-            let request = makeRenderRequest(
-                preparedSession: preparedSession,
-                exportProfile: exportResolution.effectiveProfile,
-                outputBaseFilename: plexRenderDetails.outputBaseFilename,
-                outputDirectory: snapshot.outputDirectoryURL,
-                plexTVMetadata: plexRenderDetails.metadata
-            )
-            let runDirectory = try makeFPSBakeoffRunDirectory(
-                outputDirectory: snapshot.outputDirectoryURL,
-                baseFilename: plexRenderDetails.outputBaseFilename
-            )
-            let result = try await coordinator.runFPSBakeoff(
-                preparation: preparedSession.preparation,
-                request: request,
-                runDirectory: runDirectory,
-                photoMaterializer: preparedSession.usesPhotoMaterializer ? photoMaterializer : nil,
-                writeDiagnosticsLog: snapshot.writeDiagnosticsLog,
-                progressHandler: { [weak self] progress in
-                    self?.applyReportedRenderProgress(progress)
-                },
-                statusHandler: { [weak self] status in
-                    self?.applyReportedRenderStatus(status)
-                },
-                artifactHandler: { [weak self] candidate in
-                    self?.handleLiveSnapshotCandidate(candidate)
-                },
-                systemFFmpegFallbackHandler: { [weak self] request in
-                    guard let self else { return false }
-                    return await self.confirmSystemFFmpegFallbackIfNeeded(request)
-                }
-            )
-            if preparedSession.usesPhotoMaterializer {
-                await photoMaterializer.cleanupMaterializedTemporaryFiles()
-            }
-            let reportURLs = try writeFPSBakeoffReports(result)
-            lastOutputPath = runDirectory.path
-            lastDiagnosticsPath = reportURLs.text.path
-            let successfulVariantCount = result.variants.filter(\.succeeded).count
-            lastBackendSummary = "FPS bakeoff variants: \(successfulVariantCount) of \(result.variants.count) succeeded"
-            guard successfulVariantCount > 0 else {
-                throw RenderError.exportFailed(
-                    "FPS bakeoff failed: no variants produced a final output file.\nReport: \(reportURLs.text.path)"
-                )
-            }
-            finishSuccessfulSingleRun(status: "FPS bakeoff complete.\nReport: \(reportURLs.text.path)")
-        } catch {
-            await photoMaterializer.cleanupMaterializedTemporaryFiles()
             finishFailedRun(error)
         }
     }
@@ -1721,7 +1662,7 @@ final class MainWindowViewModel: ObservableObject {
         )
         let renderStartedAt = nowProvider()
         let executionOptions = RenderExecutionOptions(
-            fpsBakeoffVariant: .mixedCadenceVFR,
+            cadencePolicy: .mixedCadence,
             preserveResumableHDRCheckpoints: snapshot.preserveResumableHDRCheckpoints
         )
         let renderResult: RenderResult
@@ -2402,7 +2343,7 @@ final class MainWindowViewModel: ObservableObject {
         lastBackendSummary = ""
         lastSingleRenderCompletionSummary = nil
         lastQueueCompletionSummary = nil
-        renderCompleteAlertTitle = "Render Complete"
+        renderCompleteAlertTitle = "Movie Ready"
         showRenderCompleteAlert = false
         pendingSystemFFmpegFallbackConfirmation = nil
         systemFFmpegFallbackContinuation = nil
@@ -2415,14 +2356,8 @@ final class MainWindowViewModel: ObservableObject {
         renderStartedAt = nil
         setCurrentItemProgress(1.0)
         statusPhaseLabel = "Complete"
-        statusMessage = status
-        if !lastDiagnosticsPath.isEmpty {
-            statusMessage += "\nDiagnostics: \(lastDiagnosticsPath)"
-        }
-        if !lastBackendSummary.isEmpty {
-            statusMessage += "\nBackend: \(lastBackendSummary)"
-        }
-        renderCompleteAlertTitle = "Render Complete"
+        statusMessage = successfulSingleRunStatusMessage(fallback: status)
+        renderCompleteAlertTitle = "Movie Ready"
         showRenderCompleteAlert = true
         pendingSystemFFmpegFallbackConfirmation = nil
         systemFFmpegFallbackContinuation = nil
@@ -2434,20 +2369,35 @@ final class MainWindowViewModel: ObservableObject {
         isRendering = false
     }
 
+    private func successfulSingleRunStatusMessage(fallback: String) -> String {
+        guard !lastOutputFilename.isEmpty else {
+            return "Movie ready."
+        }
+
+        return [
+            "Movie ready: \(lastOutputFilename)",
+            "Saved in \(lastOutputFolderPath)"
+        ].joined(separator: "\n")
+    }
+
     private func finishFailedRun(_ error: Error) {
         renderStatusDetail = nil
         queueRunContext = nil
         renderStartedAt = nil
         setCurrentItemProgress(0)
         statusPhaseLabel = isCancellingRender || error is CancellationError ? "Cancelled" : "Failed"
-        statusMessage = formatErrorForDisplay(error)
+        if statusPhaseLabel == "Cancelled" {
+            statusMessage = "Video making was cancelled."
+        } else {
+            statusMessage = "Could not make the video.\n\(formatErrorForDisplay(error))"
+        }
         cancelLiveSnapshot(
             removeImage: true,
             status: statusPhaseLabel == "Cancelled" ? "Snapshot stopped after cancellation." : "Snapshot stopped after render failure."
         )
         lastSingleRenderCompletionSummary = nil
         lastQueueCompletionSummary = nil
-        renderCompleteAlertTitle = "Render Complete"
+        renderCompleteAlertTitle = "Could Not Make Video"
         showRenderCompleteAlert = false
         pendingSystemFFmpegFallbackConfirmation = nil
         systemFFmpegFallbackContinuation = nil
@@ -2469,7 +2419,7 @@ final class MainWindowViewModel: ObservableObject {
         cancelLiveSnapshot(removeImage: true, status: "Snapshot stopped after render pause.")
         lastSingleRenderCompletionSummary = nil
         lastQueueCompletionSummary = nil
-        renderCompleteAlertTitle = "Render Complete"
+        renderCompleteAlertTitle = "Video Paused"
         showRenderCompleteAlert = false
         pendingSystemFFmpegFallbackConfirmation = nil
         systemFFmpegFallbackContinuation = nil
@@ -2486,7 +2436,7 @@ final class MainWindowViewModel: ObservableObject {
         queueRunContext = nil
         renderStartedAt = nil
         setCurrentItemProgress(1.0)
-        statusPhaseLabel = "Queue complete"
+        statusPhaseLabel = "Batch complete"
         let completedCount = queuedRenderJobs.filter { $0.state == .completed }.count
         let totalCount = queuedRenderJobs.count
         let summary = QueueCompletionSummary(
@@ -2496,14 +2446,8 @@ final class MainWindowViewModel: ObservableObject {
         )
         lastQueueCompletionSummary = summary
         lastSingleRenderCompletionSummary = nil
-        renderCompleteAlertTitle = "Queue Complete"
-        statusMessage = "Queue complete"
-        if !lastDiagnosticsPath.isEmpty {
-            statusMessage += "\nDiagnostics: \(lastDiagnosticsPath)"
-        }
-        if !lastBackendSummary.isEmpty {
-            statusMessage += "\nBackend: \(lastBackendSummary)"
-        }
+        renderCompleteAlertTitle = "Batch Exports Complete"
+        statusMessage = successfulQueueRunStatusMessage(summary: summary)
         showRenderCompleteAlert = true
         pendingSystemFFmpegFallbackConfirmation = nil
         systemFFmpegFallbackContinuation = nil
@@ -2515,17 +2459,31 @@ final class MainWindowViewModel: ObservableObject {
         isRendering = false
     }
 
+    private func successfulQueueRunStatusMessage(summary: QueueCompletionSummary) -> String {
+        var lines = [
+            "Batch exports complete.",
+            "Completed \(summary.completedJobCount) of \(summary.totalJobCount) queued job(s)."
+        ]
+
+        if !summary.lastOutputFilename.isEmpty {
+            lines.append("Last video: \(summary.lastOutputFilename)")
+            lines.append("Saved in \(summary.lastOutputFolderPath)")
+        }
+
+        return lines.joined(separator: "\n")
+    }
+
     private func finishPausedQueueRun(failedJob: QueuedRenderJob, errorMessage: String) {
         renderStatusDetail = nil
         queueRunContext = nil
         renderStartedAt = nil
         setCurrentItemProgress(0)
         statusPhaseLabel = "Queue paused"
-        statusMessage = "Queue paused after failure\n\(failedJob.sourceSummary)\n\(errorMessage)"
+        statusMessage = "Batch exports paused. One video needs review.\n\(failedJob.sourceSummary)\n\(errorMessage)"
         cancelLiveSnapshot(removeImage: true, status: "Snapshot stopped after queue failure.")
         lastSingleRenderCompletionSummary = nil
         lastQueueCompletionSummary = nil
-        renderCompleteAlertTitle = "Queue Complete"
+        renderCompleteAlertTitle = "Batch Exports Paused"
         showRenderCompleteAlert = false
         pendingSystemFFmpegFallbackConfirmation = nil
         systemFFmpegFallbackContinuation = nil
@@ -2543,11 +2501,11 @@ final class MainWindowViewModel: ObservableObject {
         renderStartedAt = nil
         setCurrentItemProgress(0)
         statusPhaseLabel = "Queue paused"
-        statusMessage = "Queue paused by user\n\(pausedJob.sourceSummary)\n\(message)"
+        statusMessage = "Batch exports paused.\n\(pausedJob.sourceSummary)\n\(message)"
         cancelLiveSnapshot(removeImage: true, status: "Snapshot stopped after queue pause.")
         lastSingleRenderCompletionSummary = nil
         lastQueueCompletionSummary = nil
-        renderCompleteAlertTitle = "Queue Complete"
+        renderCompleteAlertTitle = "Batch Exports Paused"
         showRenderCompleteAlert = false
         pendingSystemFFmpegFallbackConfirmation = nil
         systemFFmpegFallbackContinuation = nil
@@ -2566,11 +2524,11 @@ final class MainWindowViewModel: ObservableObject {
         statusPhaseLabel = "Queue paused"
         let completedCount = queuedRenderJobs.filter { $0.state == .completed }.count
         let queuedCount = queuedRenderJobs.filter { $0.state == .queued }.count
-        statusMessage = "Queue paused after current item. Completed \(completedCount) job(s), queued \(queuedCount) job(s)."
+        statusMessage = "Batch exports paused after the current video. Completed \(completedCount) job(s), queued \(queuedCount) job(s)."
         cancelLiveSnapshot(removeImage: false, status: "Snapshot preserved after queue pause.")
         lastSingleRenderCompletionSummary = nil
         lastQueueCompletionSummary = nil
-        renderCompleteAlertTitle = "Queue Complete"
+        renderCompleteAlertTitle = "Batch Exports Paused"
         showRenderCompleteAlert = false
         pendingSystemFFmpegFallbackConfirmation = nil
         systemFFmpegFallbackContinuation = nil
@@ -2588,11 +2546,11 @@ final class MainWindowViewModel: ObservableObject {
         renderStartedAt = nil
         setCurrentItemProgress(0)
         statusPhaseLabel = "Cancelled"
-        statusMessage = "Render cancelled"
+        statusMessage = "Batch exports cancelled. Unfinished jobs stayed in the queue."
         cancelLiveSnapshot(removeImage: true, status: "Snapshot stopped after cancellation.")
         lastSingleRenderCompletionSummary = nil
         lastQueueCompletionSummary = nil
-        renderCompleteAlertTitle = "Queue Complete"
+        renderCompleteAlertTitle = "Batch Exports Cancelled"
         showRenderCompleteAlert = false
         pendingSystemFFmpegFallbackConfirmation = nil
         systemFFmpegFallbackContinuation = nil
@@ -2902,96 +2860,6 @@ final class MainWindowViewModel: ObservableObject {
         warnings.append(warning)
     }
 
-    private func makeFPSBakeoffRunDirectory(outputDirectory: URL, baseFilename: String) throws -> URL {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = calendar.timeZone
-        formatter.dateFormat = "yyyyMMdd-HHmmss"
-        let timestamp = formatter.string(from: nowProvider())
-        let baseName = "\(baseFilename)__fps-bakeoff-\(timestamp)"
-        var candidate = outputDirectory.appendingPathComponent(baseName, isDirectory: true)
-        var suffix = 2
-        while FileManager.default.fileExists(atPath: candidate.path) {
-            candidate = outputDirectory.appendingPathComponent("\(baseName)-\(suffix)", isDirectory: true)
-            suffix += 1
-        }
-        try FileManager.default.createDirectory(at: candidate, withIntermediateDirectories: true)
-        return candidate
-    }
-
-    private func writeFPSBakeoffReports(_ result: FPSBakeoffResult) throws -> (json: URL, text: URL) {
-        let runDirectory = URL(fileURLWithPath: result.runDirectoryPath, isDirectory: true)
-        let jsonURL = runDirectory.appendingPathComponent("fps-bakeoff-report.json")
-        let textURL = runDirectory.appendingPathComponent("fps-bakeoff-summary.txt")
-
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(result)
-        try data.write(to: jsonURL, options: [.atomic])
-        try makeFPSBakeoffTextSummary(result).write(to: textURL, atomically: true, encoding: .utf8)
-        return (jsonURL, textURL)
-    }
-
-    private func makeFPSBakeoffTextSummary(_ result: FPSBakeoffResult) -> String {
-        let baselineSize = result.variants.first { $0.variant == result.baselineVariant }?.fileSizeBytes
-        var lines: [String] = [
-            "FPS Bakeoff Summary",
-            "Run directory: \(result.runDirectoryPath)",
-            "",
-            "Policy:",
-            "- Current CFR: existing resolved app FPS for all sections.",
-            "- Plan 1 Mixed Cadence: video bodies use standard source-FPS buckets; title bodies use 30 fps; still bodies use 5 fps; still-involved transitions use 30 fps; video-to-video transitions use the higher video bucket.",
-            "- Plan 3 Still-Aware CFR: still/title presentation prep uses 5 fps, final delivery remains the resolved app FPS.",
-            ""
-        ]
-
-        for variant in result.variants {
-            lines.append(variant.variant.displayName)
-            lines.append("- Output: \(variant.outputPath)")
-            if let errorMessage = variant.errorMessage {
-                lines.append("- Status: failed")
-                lines.append("- Error: \(errorMessage)")
-            } else {
-                lines.append("- Status: succeeded")
-            }
-            if let fileSizeBytes = variant.fileSizeBytes {
-                lines.append("- Size: \(humanReadableBytes(fileSizeBytes)) (\(fileSizeBytes) bytes)")
-                if let baselineSize, baselineSize > 0, variant.variant != result.baselineVariant {
-                    let delta = (Double(fileSizeBytes) - Double(baselineSize)) / Double(baselineSize) * 100
-                    lines.append("- Size vs Current CFR: \(String(format: "%.1f%%", delta))")
-                }
-            } else {
-                lines.append("- Size: unknown")
-            }
-            lines.append("- Elapsed: \(String(format: "%.1fs", variant.elapsedSeconds))")
-            lines.append("- Nominal app FPS: \(variant.nominalFrameRate)")
-            if let facts = variant.ffprobeFacts {
-                lines.append("- ffprobe codec: \(facts.codecName ?? "unknown")")
-                lines.append("- ffprobe avg_frame_rate: \(facts.averageFrameRate ?? "unknown")")
-                lines.append("- ffprobe r_frame_rate: \(facts.realFrameRate ?? "unknown")")
-                if let isProbablyVFR = facts.isProbablyVFR {
-                    lines.append("- ffprobe VFR signal: \(isProbablyVFR ? "likely VFR" : "not indicated")")
-                }
-                lines.append("- ffprobe color: primaries=\(facts.colorPrimaries ?? "unknown"), transfer=\(facts.colorTransfer ?? "unknown"), matrix=\(facts.colorSpace ?? "unknown")")
-            } else {
-                lines.append("- ffprobe: unavailable")
-            }
-            if let diagnosticsLogPath = variant.diagnosticsLogPath {
-                lines.append("- Diagnostics: \(diagnosticsLogPath)")
-            }
-            lines.append("")
-        }
-
-        return lines.joined(separator: "\n")
-    }
-
-    private func humanReadableBytes(_ bytes: Int64) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useKB, .useMB, .useGB]
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: bytes)
-    }
-
     private func makeRenderCompletionSummary(
         outputPath: String,
         requestedProfile: ExportProfile,
@@ -3256,7 +3124,7 @@ final class MainWindowViewModel: ObservableObject {
 
     func formatErrorForDisplay(_ error: Error) -> String {
         if isCancellingRender || error is CancellationError {
-            return "Render cancelled"
+            return "Video making was cancelled."
         }
 
         let nsError = error as NSError

@@ -88,7 +88,7 @@ struct MainWindowView: View {
             applySceneDefaultsIfNeeded()
         }
         .alert(viewModel.renderCompleteAlertTitle, isPresented: $viewModel.showRenderCompleteAlert) {
-            Button("Reveal Last Export") {
+            Button("Reveal Movie") {
                 viewModel.revealLastRenderedOutput()
             }
             .disabled(!viewModel.canRevealLastRenderedOutput)

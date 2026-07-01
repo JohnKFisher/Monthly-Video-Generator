@@ -35,6 +35,21 @@ configure_developer_dir() {
   exit 1
 }
 
+refuse_codex_sandbox() {
+  if [[ -z "${CODEX_SANDBOX:-}" ]]; then
+    return
+  fi
+
+  cat >&2 <<'EOF'
+Error: ./scripts/test.sh is running inside the Codex seatbelt sandbox.
+
+SwiftPM/SwiftUI macro plugin startup fails there with sandbox-exec/plugin-server
+errors in this repo. In Codex, rerun this exact command with
+sandbox_permissions=require_escalated instead of trying the sandboxed path first.
+EOF
+  exit 86
+}
+
 cleanup() {
   if [[ -n "${SCRATCH_PATH:-}" && -d "$SCRATCH_PATH" ]]; then
     rm -rf "$SCRATCH_PATH"
@@ -45,6 +60,7 @@ cleanup() {
 }
 
 trap cleanup EXIT
+refuse_codex_sandbox
 configure_developer_dir
 
 SCRATCH_PATH="${SWIFT_TEST_SCRATCH_PATH:-$(mktemp -d "${TMPDIR:-/tmp}/monthly-video-generator-swiftpm.XXXXXX")}"

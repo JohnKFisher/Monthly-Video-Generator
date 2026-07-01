@@ -48,16 +48,16 @@ struct FFmpegHDRProgressivePipelineBuilder {
         }
 
         let activationChunkPlan = activationPlanner.plan(for: finalPlan)
-        guard forceProgressive || activationChunkPlan.requiresChunking || finalPlan.executionFPSBakeoffVariant == .mixedCadenceVFR else {
+        guard forceProgressive || activationChunkPlan.requiresChunking || finalPlan.cadencePolicy == .mixedCadence else {
             return nil
         }
-        let cadenceVariant = finalPlan.executionFPSBakeoffVariant
+        let cadencePolicy = finalPlan.cadencePolicy
 
         let presentationPlans = finalPlan.clips.enumerated().map { index, clip in
             let presentationFrameRate = preferredPresentationFrameRate(
                 for: clip,
                 fallbackFrameRate: finalPlan.frameRate,
-                variant: cadenceVariant
+                cadencePolicy: cadencePolicy
             )
             return FFmpegRenderPlan(
                 clips: [clip],
@@ -77,7 +77,7 @@ struct FFmpegHDRProgressivePipelineBuilder {
                 chapters: [],
                 chapterMetadataURL: nil,
                 renderIntent: .presentationIntermediate,
-                executionFPSBakeoffVariant: cadenceVariant
+                cadencePolicy: cadencePolicy
             )
         }
 
@@ -99,7 +99,7 @@ struct FFmpegHDRProgressivePipelineBuilder {
             clips: presentationClips,
             transitionDurationSeconds: finalPlan.transitionDurationSeconds,
             fallbackFrameRate: finalPlan.frameRate,
-            variant: cadenceVariant
+            cadencePolicy: cadencePolicy
         )
         guard !slices.isEmpty else {
             return nil
@@ -146,7 +146,7 @@ struct FFmpegHDRProgressivePipelineBuilder {
         clips: [FFmpegRenderClip],
         transitionDurationSeconds: Double,
         fallbackFrameRate: Int,
-        variant: FPSBakeoffVariant?
+        cadencePolicy: RenderCadencePolicy?
     ) -> [FFmpegAssemblySlice] {
         guard !clips.isEmpty else {
             return []
@@ -178,7 +178,7 @@ struct FFmpegHDRProgressivePipelineBuilder {
                         preferredFrameRate: preferredBodyFrameRateOverride(
                             for: clip,
                             fallbackFrameRate: fallbackFrameRate,
-                            variant: variant
+                            cadencePolicy: cadencePolicy
                         )
                     )
                 )
@@ -213,7 +213,7 @@ struct FFmpegHDRProgressivePipelineBuilder {
                                 left: clip,
                                 right: nextClip,
                                 fallbackFrameRate: fallbackFrameRate,
-                                variant: variant
+                                cadencePolicy: cadencePolicy
                             )
                         )
                     )
@@ -317,7 +317,7 @@ struct FFmpegHDRProgressivePipelineBuilder {
                     chapters: [],
                     chapterMetadataURL: nil,
                     renderIntent: .finalBatch,
-                    executionFPSBakeoffVariant: finalPlan.executionFPSBakeoffVariant
+                    cadencePolicy: finalPlan.cadencePolicy
                 )
             )
         }
@@ -337,17 +337,12 @@ struct FFmpegHDRProgressivePipelineBuilder {
     private func preferredPresentationFrameRate(
         for clip: FFmpegRenderClip,
         fallbackFrameRate: Int,
-        variant: FPSBakeoffVariant?
+        cadencePolicy: RenderCadencePolicy?
     ) -> Int {
-        switch variant {
-        case .mixedCadenceVFR:
-            return preferredBodyFrameRate(for: clip, fallbackFrameRate: fallbackFrameRate, variant: variant)
-        case .stillAwareCFR:
-            if clip.auditInfo.kind == .still || clip.auditInfo.kind == .title {
-                return 5
-            }
-            return fallbackFrameRate
-        case .currentCFR, nil:
+        switch cadencePolicy {
+        case .mixedCadence:
+            return preferredBodyFrameRate(for: clip, fallbackFrameRate: fallbackFrameRate, cadencePolicy: cadencePolicy)
+        case nil:
             return fallbackFrameRate
         }
     }
@@ -355,10 +350,10 @@ struct FFmpegHDRProgressivePipelineBuilder {
     private func preferredBodyFrameRate(
         for clip: FFmpegRenderClip,
         fallbackFrameRate: Int,
-        variant: FPSBakeoffVariant?
+        cadencePolicy: RenderCadencePolicy?
     ) -> Int {
-        switch variant {
-        case .mixedCadenceVFR:
+        switch cadencePolicy {
+        case .mixedCadence:
             switch clip.auditInfo.kind {
             case .still:
                 return 5
@@ -367,7 +362,7 @@ struct FFmpegHDRProgressivePipelineBuilder {
             case .video:
                 return standardFrameRateBucket(for: clip.sourceFrameRate, fallback: fallbackFrameRate)
             }
-        case .stillAwareCFR, .currentCFR, nil:
+        case nil:
             return fallbackFrameRate
         }
     }
@@ -375,25 +370,22 @@ struct FFmpegHDRProgressivePipelineBuilder {
     private func preferredBodyFrameRateOverride(
         for clip: FFmpegRenderClip,
         fallbackFrameRate: Int,
-        variant: FPSBakeoffVariant?
+        cadencePolicy: RenderCadencePolicy?
     ) -> Int? {
-        guard variant != nil else {
+        guard cadencePolicy != nil else {
             return nil
         }
-        return preferredBodyFrameRate(for: clip, fallbackFrameRate: fallbackFrameRate, variant: variant)
+        return preferredBodyFrameRate(for: clip, fallbackFrameRate: fallbackFrameRate, cadencePolicy: cadencePolicy)
     }
 
     private func preferredBridgeFrameRateOverride(
         left: FFmpegRenderClip,
         right: FFmpegRenderClip,
         fallbackFrameRate: Int,
-        variant: FPSBakeoffVariant?
+        cadencePolicy: RenderCadencePolicy?
     ) -> Int? {
-        guard variant != nil else {
+        guard cadencePolicy != nil else {
             return nil
-        }
-        guard variant == .mixedCadenceVFR else {
-            return fallbackFrameRate
         }
         guard left.auditInfo.kind == .video, right.auditInfo.kind == .video else {
             return 30

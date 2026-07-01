@@ -163,7 +163,7 @@ final class MainWindowViewModelTests: XCTestCase {
         XCTAssertTrue(restoredViewModel.preserveResumableHDRCheckpoints)
     }
 
-    func testSingleRenderPassesResumabilitySettingIntoExecutionOptions() async throws {
+    func testSingleRenderPassesExecutionOptions() async throws {
         let coordinator = RenderCoordinatorSpy(preparation: makePreparation())
         let viewModel = makeViewModel(
             coordinator: coordinator,
@@ -182,7 +182,9 @@ final class MainWindowViewModelTests: XCTestCase {
             coordinator.renderExecutionOptions.count == 1 && !viewModel.isRendering
         }
 
-        XCTAssertEqual(coordinator.renderExecutionOptions.first?.preserveResumableHDRCheckpoints, true)
+        let executionOptions = try XCTUnwrap(coordinator.renderExecutionOptions.first)
+        XCTAssertEqual(executionOptions.cadencePolicy, .mixedCadence)
+        XCTAssertEqual(executionOptions.preserveResumableHDRCheckpoints, true)
     }
 
     func testFocusedRunLayoutIsFalseAtFreshIdleState() {
@@ -334,60 +336,6 @@ final class MainWindowViewModelTests: XCTestCase {
                     $0.contains("Diagnostics Failure.json")
             }
         )
-    }
-
-    func testFPSBakeoffFailsWhenNoVariantProducesOutput() async throws {
-        let coordinator = RenderCoordinatorSpy(
-            preparation: makePreparation(),
-            fpsBakeoffResultBuilder: { request, runDirectory in
-                let variants = FPSBakeoffVariantID.allCases.map { variant in
-                    FPSBakeoffVariantResult(
-                        variant: variant,
-                        outputPath: runDirectory
-                            .appendingPathComponent("\(request.output.baseFilename)__fps-bakeoff-\(variant.filenameSuffix)")
-                            .appendingPathExtension(request.export.container.fileExtension)
-                            .path,
-                        diagnosticsLogPath: nil,
-                        backendSummary: nil,
-                        width: 1920,
-                        height: 1080,
-                        nominalFrameRate: 60,
-                        fileSizeBytes: nil,
-                        elapsedSeconds: 1,
-                        ffprobeFacts: nil,
-                        errorMessage: "Simulated bakeoff failure"
-                    )
-                }
-                return FPSBakeoffResult(
-                    runDirectoryPath: runDirectory.path,
-                    baselineVariant: .currentCFR,
-                    variants: variants
-                )
-            }
-        )
-        let viewModel = makeViewModel(
-            coordinator: coordinator,
-            preferencesStore: makePreferencesStore()
-        )
-        let directory = makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-
-        viewModel.sourceMode = .folder
-        viewModel.selectedFolderURL = directory
-        viewModel.outputDirectoryURL = directory
-        viewModel.selectedDynamicRange = .hdr
-        viewModel.selectedVideoCodec = .hevc
-
-        viewModel.runFPSBakeoff()
-        await waitUntil(message: "Timed out waiting for failed FPS bakeoff.") {
-            !viewModel.isRendering && viewModel.statusPhaseLabel == "Failed"
-        }
-
-        XCTAssertFalse(viewModel.showRenderCompleteAlert)
-        XCTAssertTrue(viewModel.statusMessage.contains("FPS bakeoff failed: no variants produced a final output file."))
-        XCTAssertTrue(viewModel.statusMessage.contains("fps-bakeoff-summary.txt"))
-        XCTAssertTrue(viewModel.lastOutputPath.contains("__fps-bakeoff-"))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: viewModel.lastDiagnosticsPath))
     }
 
     func testQueuedRenderWithDiagnosticsOffDoesNotWriteSidecarJSON() async throws {
@@ -1132,8 +1080,14 @@ final class MainWindowViewModelTests: XCTestCase {
         XCTAssertEqual(value(in: summary, forRowNamed: "Frame Rate"), "Smart (60 fps)")
         XCTAssertEqual(value(in: summary, forRowNamed: "Range"), "HDR")
         XCTAssertEqual(value(in: summary, forRowNamed: "Engine"), "Bundled Preferred")
+        XCTAssertEqual(viewModel.renderCompleteAlertTitle, "Movie Ready")
         XCTAssertEqual(viewModel.renderCompleteAlertMessage, summary.alertMessage)
-        XCTAssertTrue(summary.alertMessage.hasPrefix(summary.outputPath))
+        XCTAssertTrue(summary.alertMessage.hasPrefix("Your movie is ready."))
+        XCTAssertTrue(summary.alertMessage.contains("File: \(summary.outputFilename)"))
+        XCTAssertTrue(summary.alertMessage.contains("Folder: \(summary.outputFolderPath)"))
+        XCTAssertEqual(viewModel.lastOutputFilename, summary.outputFilename)
+        XCTAssertEqual(viewModel.lastOutputFolderPath, summary.outputFolderPath)
+        XCTAssertTrue(viewModel.statusMessage.contains("Movie ready: \(summary.outputFilename)"))
     }
 
     func testSingleRenderRequestKeepsResolvedMetadataSnapshot() async throws {
@@ -2081,8 +2035,13 @@ final class MainWindowViewModelTests: XCTestCase {
             !viewModel.isRendering && viewModel.showRenderCompleteAlert
         }
 
-        XCTAssertEqual(viewModel.renderCompleteAlertTitle, "Queue Complete")
+        XCTAssertEqual(viewModel.renderCompleteAlertTitle, "Batch Exports Complete")
+        XCTAssertTrue(viewModel.renderCompleteAlertMessage.contains("Batch exports complete."))
         XCTAssertTrue(viewModel.renderCompleteAlertMessage.contains("Completed 2 of 2 queued jobs."))
+        XCTAssertTrue(viewModel.renderCompleteAlertMessage.contains("Last file: Queue Two.mp4"))
+        XCTAssertTrue(viewModel.renderCompleteAlertMessage.contains("Folder: \(directory.path)"))
+        XCTAssertTrue(viewModel.statusMessage.contains("Last video: Queue Two.mp4"))
+        XCTAssertTrue(viewModel.statusMessage.contains("Saved in \(directory.path)"))
     }
 
     func testFailedQueuedJobPausesAndCanRetry() async throws {
@@ -2211,7 +2170,7 @@ final class MainWindowViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.queuedRenderJobs.map(\.state), [.queued, .queued])
         XCTAssertEqual(coordinator.cancelCurrentRenderCallCount, 1)
-        XCTAssertEqual(viewModel.statusMessage, "Render cancelled")
+        XCTAssertEqual(viewModel.statusMessage, "Batch exports cancelled. Unfinished jobs stayed in the queue.")
     }
 
     func testQueuePauseAfterCurrentItemStopsBeforeNextQueuedJob() async throws {
@@ -2260,7 +2219,7 @@ final class MainWindowViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.queuedRenderJobs.map(\.state), [.completed, .queued])
         XCTAssertNotNil(viewModel.queuedRenderJobs[0].resultSummary)
         XCTAssertTrue(viewModel.usesFocusedRunLayout)
-        XCTAssertTrue(viewModel.statusMessage.contains("Queue paused after current item."))
+        XCTAssertTrue(viewModel.statusMessage.contains("Batch exports paused after the current video."))
         XCTAssertFalse(viewModel.showRenderCompleteAlert)
         XCTAssertFalse(viewModel.isQueuePauseRequested)
 
@@ -2437,7 +2396,7 @@ final class MainWindowViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.queuedRenderJobs.map(\.state), [.paused, .queued])
         XCTAssertEqual(
             viewModel.queueStatusDescription,
-            "Queue paused by user. Paused 1 job(s), queued 1 job(s)."
+            "Batch exports paused. Paused 1 job(s), queued 1 job(s)."
         )
 
         coordinator.pausedRenderIndices = []
@@ -2490,7 +2449,7 @@ final class MainWindowViewModelTests: XCTestCase {
 
         XCTAssertEqual(coordinator.renderRequests.count, 2)
         XCTAssertTrue(viewModel.showRenderCompleteAlert)
-        XCTAssertEqual(viewModel.renderCompleteAlertTitle, "Queue Complete")
+        XCTAssertEqual(viewModel.renderCompleteAlertTitle, "Batch Exports Complete")
     }
 
     private func makeViewModel(
@@ -2713,13 +2672,11 @@ private final class RenderCoordinatorSpy: RenderCoordinating, @unchecked Sendabl
     let suspendRenderUntilResumed: Bool
     let renderDelay: Duration?
     let renderResultBuilder: ((RenderPreparation, RenderRequest, Int, Bool) -> RenderResult)?
-    let fpsBakeoffResultBuilder: ((RenderRequest, URL) -> FPSBakeoffResult)?
     let systemFallbackReason: String?
     let artifactLabel: String?
     private(set) var prepareFolderRequests: [RenderRequest] = []
     private(set) var renderRequests: [RenderRequest] = []
     private(set) var renderExecutionOptions: [RenderExecutionOptions] = []
-    private(set) var fpsBakeoffRequests: [RenderRequest] = []
     private(set) var cancelCurrentRenderCallCount: Int = 0
     private(set) var pauseAfterCheckpointCallCount: Int = 0
     private var suspendedRenderContinuation: CheckedContinuation<Void, Never>?
@@ -2732,8 +2689,7 @@ private final class RenderCoordinatorSpy: RenderCoordinating, @unchecked Sendabl
         renderDelay: Duration? = nil,
         systemFallbackReason: String? = nil,
         artifactLabel: String? = nil,
-        renderResultBuilder: ((RenderPreparation, RenderRequest, Int, Bool) -> RenderResult)? = nil,
-        fpsBakeoffResultBuilder: ((RenderRequest, URL) -> FPSBakeoffResult)? = nil
+        renderResultBuilder: ((RenderPreparation, RenderRequest, Int, Bool) -> RenderResult)? = nil
     ) {
         self.preparation = preparation
         self.failedRenderIndices = failedRenderIndices
@@ -2743,7 +2699,6 @@ private final class RenderCoordinatorSpy: RenderCoordinating, @unchecked Sendabl
         self.systemFallbackReason = systemFallbackReason
         self.artifactLabel = artifactLabel
         self.renderResultBuilder = renderResultBuilder
-        self.fpsBakeoffResultBuilder = fpsBakeoffResultBuilder
     }
 
     func prepareFolderRender(request: RenderRequest) async throws -> RenderPreparation {
@@ -2835,49 +2790,6 @@ private final class RenderCoordinatorSpy: RenderCoordinating, @unchecked Sendabl
                 height: defaultVideoDimensions(for: request.export.resolution).height,
                 frameRate: defaultFrameRate(for: request.export.frameRate)
             )
-        )
-    }
-
-    func runFPSBakeoff(
-        preparation: RenderPreparation,
-        request: RenderRequest,
-        runDirectory: URL,
-        photoMaterializer: PhotoAssetMaterializing?,
-        writeDiagnosticsLog: Bool,
-        progressHandler: RenderProgressHandler,
-        statusHandler: RenderStatusHandler,
-        artifactHandler: RenderArtifactSnapshotHandler,
-        systemFFmpegFallbackHandler: SystemFFmpegFallbackHandler?
-    ) async throws -> FPSBakeoffResult {
-        fpsBakeoffRequests.append(request)
-        statusHandler?("Running FPS bakeoff")
-        progressHandler?(1.0)
-        try FileManager.default.createDirectory(at: runDirectory, withIntermediateDirectories: true)
-        if let fpsBakeoffResultBuilder {
-            return fpsBakeoffResultBuilder(request, runDirectory)
-        }
-        let variants = FPSBakeoffVariantID.allCases.map { variant in
-            FPSBakeoffVariantResult(
-                variant: variant,
-                outputPath: runDirectory
-                    .appendingPathComponent("\(request.output.baseFilename)__fps-bakeoff-\(variant.filenameSuffix)")
-                    .appendingPathExtension(request.export.container.fileExtension)
-                    .path,
-                diagnosticsLogPath: nil,
-                backendSummary: "FFmpeg HDR backend [bundled] (encoder: libx265)",
-                width: 1920,
-                height: 1080,
-                nominalFrameRate: 60,
-                fileSizeBytes: variant == .currentCFR ? 1_000_000 : 800_000,
-                elapsedSeconds: 1,
-                ffprobeFacts: nil,
-                errorMessage: nil
-            )
-        }
-        return FPSBakeoffResult(
-            runDirectoryPath: runDirectory.path,
-            baselineVariant: .currentCFR,
-            variants: variants
         )
     }
 

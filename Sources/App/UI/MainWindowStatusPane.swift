@@ -76,8 +76,8 @@ struct MainWindowLightTablePane: View {
 
             lightTableStatusBlock
 
-            if !viewModel.lastOutputPath.isEmpty {
-                MainWindowStatusLine(title: "Output", value: viewModel.lastOutputPath)
+            if viewModel.canRevealLastRenderedOutput {
+                MainWindowLastExportSummary(viewModel: viewModel)
             }
 
             if !viewModel.lastDiagnosticsPath.isEmpty {
@@ -232,7 +232,7 @@ struct MainWindowStatusPane: View {
                     Spacer()
 
                     if viewModel.canRevealLastRenderedOutput {
-                        Button("Reveal Last Export") {
+                        Button("Reveal Last Movie") {
                             viewModel.revealLastRenderedOutput()
                         }
                     }
@@ -285,14 +285,8 @@ struct MainWindowStatusPane: View {
 
                 MainWindowLiveSnapshotView(viewModel: viewModel)
 
-                if !viewModel.lastOutputPath.isEmpty {
-                    HStack(alignment: .top, spacing: 10) {
-                        MainWindowStatusLine(title: "Output", value: viewModel.lastOutputPath)
-
-                        Button("Reveal Folder") {
-                            viewModel.openRenderedOutputFolder()
-                        }
-                    }
+                if viewModel.canRevealLastRenderedOutput {
+                    MainWindowLastExportSummary(viewModel: viewModel)
                 }
 
                 if !viewModel.lastDiagnosticsPath.isEmpty {
@@ -328,6 +322,76 @@ struct MainWindowStatusPane: View {
         }
     }
 
+}
+
+private struct MainWindowLastExportSummary: View {
+    @ObservedObject var viewModel: MainWindowViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Finished Movie", systemImage: "checkmark.circle.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(MainWindowTheme.accentGreen)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(viewModel.lastOutputFilename.isEmpty ? "Output ready" : viewModel.lastOutputFilename)
+                    .font(.footnote.weight(.semibold))
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+
+                if !viewModel.lastOutputFolderPath.isEmpty {
+                    Text(viewModel.lastOutputFolderPath)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                }
+            }
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    Button("Reveal File") {
+                        viewModel.revealLastRenderedOutput()
+                    }
+                    .disabled(!viewModel.canRevealLastRenderedOutput)
+
+                    Button("Open Folder") {
+                        viewModel.openRenderedOutputFolder()
+                    }
+                    .disabled(!viewModel.canRevealLastRenderedOutput)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Button("Reveal File") {
+                        viewModel.revealLastRenderedOutput()
+                    }
+                    .disabled(!viewModel.canRevealLastRenderedOutput)
+
+                    Button("Open Folder") {
+                        viewModel.openRenderedOutputFolder()
+                    }
+                    .disabled(!viewModel.canRevealLastRenderedOutput)
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(summaryBackground)
+        )
+    }
+
+    private var summaryBackground: Color {
+        #if canImport(AppKit)
+        Color(nsColor: .textBackgroundColor).opacity(0.62)
+        #else
+        Color.white.opacity(0.7)
+        #endif
+    }
 }
 
 private struct MainWindowStatusMetric: View {

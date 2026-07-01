@@ -59,10 +59,10 @@ final class FFmpegProgressivePipelineTests: XCTestCase {
 
     func testMixedCadenceForcesProgressivePipelineForSmallHDRHEVCPlans() {
         let builder = FFmpegHDRProgressivePipelineBuilder()
-        let currentPlan = makeMixedKindHDRPlan(variant: .currentCFR)
-        let mixedPlan = makeMixedKindHDRPlan(variant: .mixedCadenceVFR)
+        let standardPlan = makeMixedKindHDRPlan(cadencePolicy: nil)
+        let mixedPlan = makeMixedKindHDRPlan(cadencePolicy: .mixedCadence)
 
-        XCTAssertNil(makeExecutionPlan(builder: builder, plan: currentPlan))
+        XCTAssertNil(makeExecutionPlan(builder: builder, plan: standardPlan))
         XCTAssertNotNil(makeExecutionPlan(builder: builder, plan: mixedPlan))
     }
 
@@ -338,7 +338,7 @@ final class FFmpegProgressivePipelineTests: XCTestCase {
         let executionPlan = try XCTUnwrap(
             makeExecutionPlan(
                 builder: builder,
-                plan: makeMixedKindHDRPlan(variant: nil),
+                plan: makeMixedKindHDRPlan(cadencePolicy: nil),
                 forceProgressive: true
             )
         )
@@ -346,12 +346,12 @@ final class FFmpegProgressivePipelineTests: XCTestCase {
         XCTAssertTrue(executionPlan.slices.map(\.preferredFrameRate).allSatisfy { $0 == nil })
     }
 
-    func testMixedCadenceBakeoffUsesStillAndBridgeFrameRateOverrides() throws {
+    func testMixedCadenceUsesStillAndBridgeFrameRateOverrides() throws {
         let builder = FFmpegHDRProgressivePipelineBuilder()
         let executionPlan = try XCTUnwrap(
             makeExecutionPlan(
                 builder: builder,
-                plan: makeMixedKindHDRPlan(variant: .mixedCadenceVFR),
+                plan: makeMixedKindHDRPlan(cadencePolicy: .mixedCadence),
                 forceProgressive: true
             )
         )
@@ -361,7 +361,7 @@ final class FFmpegProgressivePipelineTests: XCTestCase {
     }
 
     func testDefaultExecutionOptionsUseMixedCadence() {
-        XCTAssertEqual(RenderExecutionOptions.default.fpsBakeoffVariant, .mixedCadenceVFR)
+        XCTAssertEqual(RenderExecutionOptions.default.cadencePolicy, .mixedCadence)
     }
 
     func testMixedCadenceKeepsTitleMotionAtThirtyFPS() throws {
@@ -369,7 +369,7 @@ final class FFmpegProgressivePipelineTests: XCTestCase {
         let executionPlan = try XCTUnwrap(
             makeExecutionPlan(
                 builder: builder,
-                plan: makeTitleStillHDRPlan(variant: .mixedCadenceVFR),
+                plan: makeTitleStillHDRPlan(cadencePolicy: .mixedCadence),
                 forceProgressive: true
             )
         )
@@ -383,27 +383,13 @@ final class FFmpegProgressivePipelineTests: XCTestCase {
         let executionPlan = try XCTUnwrap(
             makeExecutionPlan(
                 builder: builder,
-                plan: makeHighFrameRateHDRPlan(variant: .mixedCadenceVFR),
+                plan: makeHighFrameRateHDRPlan(cadencePolicy: .mixedCadence),
                 forceProgressive: true
             )
         )
 
         XCTAssertEqual(executionPlan.presentationPlans.map(\.frameRate), [60, 60])
         XCTAssertEqual(executionPlan.slices.map(\.preferredFrameRate), [60, 60, 60])
-    }
-
-    func testStillAwareCFRBakeoffOnlyLowersStillPresentationRate() throws {
-        let builder = FFmpegHDRProgressivePipelineBuilder()
-        let executionPlan = try XCTUnwrap(
-            makeExecutionPlan(
-                builder: builder,
-                plan: makeMixedKindHDRPlan(variant: .stillAwareCFR),
-                forceProgressive: true
-            )
-        )
-
-        XCTAssertEqual(executionPlan.presentationPlans.map(\.frameRate), [60, 5, 60])
-        XCTAssertEqual(executionPlan.slices.map(\.preferredFrameRate), [60, 60, 60, 60, 60])
     }
 
     private func makeExecutionPlan(
@@ -421,7 +407,7 @@ final class FFmpegProgressivePipelineTests: XCTestCase {
         )
     }
 
-    private func makeMixedKindHDRPlan(variant: FPSBakeoffVariant?) -> FFmpegRenderPlan {
+    private func makeMixedKindHDRPlan(cadencePolicy: RenderCadencePolicy?) -> FFmpegRenderPlan {
         FFmpegRenderPlan(
             clips: [
                 makeHDRClip(index: 0, kind: .video, sourceFrameRate: 59.94),
@@ -440,11 +426,11 @@ final class FFmpegProgressivePipelineTests: XCTestCase {
             dynamicRange: .hdr,
             hdrHEVCEncoderMode: .automatic,
             renderIntent: .finalDelivery,
-            executionFPSBakeoffVariant: variant
+            cadencePolicy: cadencePolicy
         )
     }
 
-    private func makeTitleStillHDRPlan(variant: FPSBakeoffVariant?) -> FFmpegRenderPlan {
+    private func makeTitleStillHDRPlan(cadencePolicy: RenderCadencePolicy?) -> FFmpegRenderPlan {
         FFmpegRenderPlan(
             clips: [
                 makeHDRClip(index: 0, kind: .title, sourceFrameRate: nil),
@@ -463,11 +449,11 @@ final class FFmpegProgressivePipelineTests: XCTestCase {
             dynamicRange: .hdr,
             hdrHEVCEncoderMode: .automatic,
             renderIntent: .finalDelivery,
-            executionFPSBakeoffVariant: variant
+            cadencePolicy: cadencePolicy
         )
     }
 
-    private func makeHighFrameRateHDRPlan(variant: FPSBakeoffVariant?) -> FFmpegRenderPlan {
+    private func makeHighFrameRateHDRPlan(cadencePolicy: RenderCadencePolicy?) -> FFmpegRenderPlan {
         FFmpegRenderPlan(
             clips: [
                 makeHDRClip(index: 0, kind: .video, sourceFrameRate: 119.88),
@@ -485,7 +471,7 @@ final class FFmpegProgressivePipelineTests: XCTestCase {
             dynamicRange: .hdr,
             hdrHEVCEncoderMode: .automatic,
             renderIntent: .finalDelivery,
-            executionFPSBakeoffVariant: variant
+            cadencePolicy: cadencePolicy
         )
     }
 

@@ -5,7 +5,7 @@ This document is a practical handoff for building a new app that assembles `4K 6
 It mixes two kinds of knowledge:
 
 1. General HDR/video-color lessons that should carry to a new app.
-2. App-specific decisions that were validated in this repo and are worth preserving unless a new bakeoff proves otherwise.
+2. App-specific decisions that were validated in this repo and are worth preserving unless a deliberate new validation pass proves otherwise.
 
 This is not a generic HDR tutorial. It is a "what actually bit us, what worked, and what to keep frozen" reference.
 
