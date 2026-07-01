@@ -88,13 +88,13 @@ swift build
 Run tests:
 
 ```bash
-swift test
+./scripts/test.sh
 ```
 
 If the local `.build` directory has stale code-signing or toolchain artifacts, use a fresh scratch path instead of treating that as an app failure:
 
 ```bash
-swift test --scratch-path /private/tmp/monthly-video-generator-swiftpm
+SWIFT_TEST_SCRATCH_PATH=/private/tmp/monthly-video-generator-swiftpm ./scripts/test.sh
 ```
 
 Run the app from source:

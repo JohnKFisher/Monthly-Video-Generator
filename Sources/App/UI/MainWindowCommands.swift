@@ -40,7 +40,7 @@ struct MainWindowCommands: Commands {
         }
 
         CommandMenu("Render") {
-            Button("Generate Video") {
+            Button("Make Video") {
                 viewModel.startRender()
             }
             .keyboardShortcut("r")
@@ -64,7 +64,7 @@ struct MainWindowCommands: Commands {
             .disabled(!viewModel.canAddCurrentSettingsToQueue)
 
             if viewModel.showsSelectedYearQueueAction {
-                Button("Add Full Year") {
+                Button("Queue Full Year") {
                     viewModel.addSelectedYearToQueue()
                 }
                 .keyboardShortcut("y", modifiers: [.command, .shift])
@@ -84,7 +84,7 @@ struct MainWindowCommands: Commands {
 
             Divider()
 
-            Button("Reset Style & Export to Plex Defaults") {
+            Button("Restore Recommended Output") {
                 viewModel.resetStyleAndExportSettingsToPlexDefaults()
             }
             .disabled(!viewModel.canResetExportSettings)

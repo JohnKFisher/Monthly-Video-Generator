@@ -12,11 +12,11 @@ struct MainWindowQueuePane: View {
     var body: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: rowSpacing) {
-                queueActions
-
                 if viewModel.queuedRenderJobs.isEmpty {
-                    MainWindowCurrentJobCard(viewModel: viewModel)
+                    emptyQueueIntro
+                    emptyQueueActions
                 } else {
+                    queueActions
                     queueFlightStrip
 
                     if let selectedQueuedJob {
@@ -29,7 +29,9 @@ struct MainWindowQueuePane: View {
                     }
                 }
 
-                MainWindowCaption(text: viewModel.queueStatusDescription)
+                if !viewModel.queuedRenderJobs.isEmpty {
+                    MainWindowCaption(text: viewModel.queueStatusDescription)
+                }
 
                 if viewModel.showsSelectedYearQueueAction {
                     MainWindowCaption(text: viewModel.selectedYearQueueDescription)
@@ -48,7 +50,7 @@ struct MainWindowQueuePane: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } label: {
-            MainWindowSectionLabel(title: "Queue", accent: MainWindowTheme.accentNavy)
+            MainWindowSectionLabel(title: "Batch Exports", accent: MainWindowTheme.accentNavy)
         }
         .alert(
             "Remove queued job?",
@@ -145,7 +147,7 @@ struct MainWindowQueuePane: View {
                 .disabled(!viewModel.canAddCurrentSettingsToQueue)
 
                 if viewModel.showsSelectedYearQueueAction {
-                    Button(viewModel.isPreparingYearQueue ? "Scanning Year…" : "Add Full Year") {
+                    Button(viewModel.isPreparingYearQueue ? "Scanning Year…" : "Queue Full Year") {
                         viewModel.addSelectedYearToQueue()
                     }
                     .disabled(!viewModel.canAddSelectedYearToQueue)
@@ -178,7 +180,7 @@ struct MainWindowQueuePane: View {
                 .disabled(!viewModel.canAddCurrentSettingsToQueue)
 
                 if viewModel.showsSelectedYearQueueAction {
-                    Button(viewModel.isPreparingYearQueue ? "Scanning Year…" : "Add Full Year") {
+                    Button(viewModel.isPreparingYearQueue ? "Scanning Year…" : "Queue Full Year") {
                         viewModel.addSelectedYearToQueue()
                     }
                     .disabled(!viewModel.canAddSelectedYearToQueue)
@@ -201,6 +203,48 @@ struct MainWindowQueuePane: View {
                         isClearQueueConfirmationPresented = true
                     }
                     .disabled(!viewModel.canClearQueue)
+                }
+            }
+        }
+    }
+
+    private var emptyQueueIntro: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Need more than one video?")
+                .font(.subheadline.weight(.semibold))
+
+            MainWindowCaption(text: viewModel.queueStatusDescription)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var emptyQueueActions: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                Button(viewModel.addCurrentSettingsToQueueLabel) {
+                    viewModel.addCurrentSettingsToQueue()
+                }
+                .disabled(!viewModel.canAddCurrentSettingsToQueue)
+
+                if viewModel.showsSelectedYearQueueAction {
+                    Button(viewModel.isPreparingYearQueue ? "Scanning Year…" : "Queue Full Year") {
+                        viewModel.addSelectedYearToQueue()
+                    }
+                    .disabled(!viewModel.canAddSelectedYearToQueue)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: rowSpacing) {
+                Button(viewModel.addCurrentSettingsToQueueLabel) {
+                    viewModel.addCurrentSettingsToQueue()
+                }
+                .disabled(!viewModel.canAddCurrentSettingsToQueue)
+
+                if viewModel.showsSelectedYearQueueAction {
+                    Button(viewModel.isPreparingYearQueue ? "Scanning Year…" : "Queue Full Year") {
+                        viewModel.addSelectedYearToQueue()
+                    }
+                    .disabled(!viewModel.canAddSelectedYearToQueue)
                 }
             }
         }

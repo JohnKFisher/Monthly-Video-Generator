@@ -44,6 +44,16 @@ final class MainWindowViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.selectedYear, 2025)
     }
 
+    func testYearPickerIncludes1979AsTheEarliestSelectableYear() {
+        let viewModel = makeViewModel(
+            coordinator: RenderCoordinatorSpy(preparation: makePreparation()),
+            preferencesStore: makePreferencesStore()
+        )
+
+        XCTAssertEqual(viewModel.years.last, 1979)
+        XCTAssertTrue(viewModel.years.contains(1979))
+    }
+
     func testHDRX265SpeedDefaultsToFast() {
         let viewModel = makeViewModel(
             coordinator: RenderCoordinatorSpy(preparation: makePreparation()),
@@ -664,6 +674,48 @@ final class MainWindowViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.canStartRender)
         XCTAssertFalse(viewModel.canChooseInputFolder)
         XCTAssertFalse(viewModel.canChooseOutputFolder)
+    }
+
+    func testFolderModeRequiresSourceFolderBeforeRenderCanStart() {
+        let viewModel = makeViewModel(
+            coordinator: RenderCoordinatorSpy(preparation: makePreparation()),
+            preferencesStore: makePreferencesStore()
+        )
+
+        viewModel.sourceMode = .folder
+        viewModel.selectedFolderURL = nil
+
+        XCTAssertFalse(viewModel.canStartRender)
+        XCTAssertFalse(viewModel.isCurrentRenderReady)
+        XCTAssertEqual(viewModel.renderReadinessTitle, "Choose a source folder")
+        XCTAssertEqual(
+            viewModel.renderReadinessDescription,
+            "Pick the folder that contains the photos and videos for this movie."
+        )
+    }
+
+    func testPhotosAlbumModeRequiresAlbumBeforeRenderCanStartWhenNoAlbumsAreAvailable() async {
+        let photoDiscovery = PhotoLibraryDiscoveringSpy(albums: [])
+        let viewModel = makeViewModel(
+            coordinator: RenderCoordinatorSpy(preparation: makePreparation()),
+            photoDiscovery: photoDiscovery,
+            preferencesStore: makePreferencesStore()
+        )
+
+        viewModel.sourceMode = .photos
+        viewModel.selectedPhotosFilterMode = .album
+
+        await waitUntil(message: "Timed out waiting for empty album load.") {
+            viewModel.photoAlbumsStatusMessage == "No photo/video albums were found."
+        }
+
+        XCTAssertFalse(viewModel.canStartRender)
+        XCTAssertFalse(viewModel.isCurrentRenderReady)
+        XCTAssertEqual(viewModel.renderReadinessTitle, "No Photos album selected")
+        XCTAssertEqual(
+            viewModel.renderReadinessDescription,
+            "No photo/video albums were found."
+        )
     }
 
     func testShowTitlePersistsAcrossLaunchesAndResetRestoresDefault() {

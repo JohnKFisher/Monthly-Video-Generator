@@ -24,7 +24,7 @@ struct MainWindowLightTablePane: View {
             }
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                MainWindowSectionLabel(title: "Preview & Status", accent: MainWindowTheme.accentTeal)
+                MainWindowSectionLabel(title: "Movie Preview", accent: MainWindowTheme.accentTeal)
                 Spacer(minLength: 8)
                 Text(AppMetadata.versionBuildLabel)
                     .font(.caption.weight(.semibold))
@@ -40,7 +40,7 @@ struct MainWindowLightTablePane: View {
             lightTableBadge(title: "Output", value: viewModel.currentRenderOutputNamePreview)
             lightTableBadge(
                 title: "Settings",
-                value: viewModel.hasCustomStyleOrExportSettings ? "Custom settings" : "Plex defaults"
+                value: viewModel.hasCustomStyleOrExportSettings ? "Custom output settings" : "Recommended output"
             )
 
             VStack(alignment: .leading, spacing: 8) {
@@ -86,6 +86,8 @@ struct MainWindowLightTablePane: View {
 
             Spacer(minLength: 0)
 
+            lightTableReadinessBlock
+
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 10) {
                     lightTableButtons
@@ -120,12 +122,36 @@ struct MainWindowLightTablePane: View {
             .disabled(!viewModel.canPauseQueueAfterCurrentItem)
         }
 
-        Button("Generate Video") {
+        Button("Make Video") {
             viewModel.startRender()
         }
         .buttonStyle(.borderedProminent)
         .tint(MainWindowTheme.accentPeach)
         .disabled(!viewModel.canStartRender)
+    }
+
+    private var lightTableReadinessBlock: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label(
+                viewModel.renderReadinessTitle,
+                systemImage: viewModel.isCurrentRenderReady ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+            )
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(viewModel.isCurrentRenderReady ? MainWindowTheme.accentGreen : MainWindowTheme.accentAmber)
+
+            Text(viewModel.renderReadinessDescription)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(lightTableBadgeBackground)
+        )
     }
 
     private func lightTableBadge(title: String, value: String) -> some View {
@@ -288,7 +314,7 @@ struct MainWindowStatusPane: View {
                     .buttonStyle(.bordered)
                     .disabled(!viewModel.isRendering)
 
-                    Button("Generate Video") {
+                    Button("Make Video") {
                         viewModel.startRender()
                     }
                     .buttonStyle(.borderedProminent)

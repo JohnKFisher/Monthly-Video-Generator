@@ -49,7 +49,7 @@ struct MainWindowSettingsSummaryPane: View {
             VStack(alignment: .leading, spacing: rowSpacing) {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Label(
-                        viewModel.hasCustomStyleOrExportSettings ? "Custom settings" : "Plex defaults",
+                        viewModel.hasCustomStyleOrExportSettings ? "Custom output settings" : "Recommended output",
                         systemImage: viewModel.hasCustomStyleOrExportSettings ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
                     )
                     .font(.subheadline.weight(.semibold))
@@ -58,7 +58,7 @@ struct MainWindowSettingsSummaryPane: View {
                     Spacer(minLength: 8)
 
                     SettingsLink {
-                        Text("Review Settings…")
+                        Text("Review Output…")
                     }
 
                     if viewModel.hasCustomStyleOrExportSettings {
@@ -69,12 +69,12 @@ struct MainWindowSettingsSummaryPane: View {
                     }
                 }
 
-                MainWindowCaption(text: viewModel.settingsSummaryDescription)
+                MainWindowCaption(text: viewModel.outputPresetDescription)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } label: {
-            MainWindowSectionLabel(title: "Settings", accent: MainWindowTheme.accentTeal)
+            MainWindowSectionLabel(title: "Output Settings", accent: MainWindowTheme.accentTeal)
         }
     }
 }

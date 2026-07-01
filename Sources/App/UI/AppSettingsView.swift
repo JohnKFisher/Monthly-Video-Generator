@@ -5,6 +5,9 @@ struct AppSettingsView: View {
     @ObservedObject var viewModel: MainWindowViewModel
     private let folderSelector: FolderSelecting
 
+    @SceneStorage("AppSettingsView.isAdvancedExportExpanded")
+    private var isAdvancedExportExpanded = false
+
     init(
         shellPreferences: AppShellPreferencesStore,
         viewModel: MainWindowViewModel,
@@ -86,14 +89,37 @@ struct AppSettingsView: View {
     private var exportTab: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Advanced Export")
-                    .font(.headline)
+                settingsSection("Output Preset") {
+                    Label(
+                        viewModel.outputPresetTitle,
+                        systemImage: viewModel.hasCustomStyleOrExportSettings ? "slider.horizontal.3" : "checkmark.circle.fill"
+                    )
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(viewModel.hasCustomStyleOrExportSettings ? MainWindowTheme.accentAmber : MainWindowTheme.accentGreen)
 
-                Text("Changes here save automatically and affect the next render or queue snapshot.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    Text(viewModel.outputPresetDescription)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                MainWindowAdvancedExportSettingsView(viewModel: viewModel)
+                    if viewModel.hasCustomStyleOrExportSettings {
+                        Button("Restore Recommended Output") {
+                            viewModel.resetStyleAndExportSettingsToPlexDefaults()
+                        }
+                        .disabled(!viewModel.canResetExportSettings)
+                    }
+                }
+
+                DisclosureGroup("Advanced export controls", isExpanded: $isAdvancedExportExpanded) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Changes here save automatically and affect the next render or queue snapshot.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        MainWindowAdvancedExportSettingsView(viewModel: viewModel)
+                    }
+                    .padding(.top, 6)
+                }
             }
             .padding(.horizontal, 24)
             .padding(.top, 18)

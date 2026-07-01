@@ -14,21 +14,13 @@ struct MainWindowView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: sectionSpacing) {
-                MainWindowLightTablePane(viewModel: viewModel)
-                MainWindowQueuePane(viewModel: viewModel)
-
-                if !viewModel.usesFocusedRunLayout {
-                    ViewThatFits(in: .horizontal) {
-                        HStack(alignment: .top, spacing: sectionSpacing) {
-                            workflowPane
-                            exportPane
-                        }
-
-                        VStack(alignment: .leading, spacing: sectionSpacing) {
-                            workflowPane
-                            exportPane
-                        }
-                    }
+                if viewModel.usesFocusedRunLayout {
+                    MainWindowLightTablePane(viewModel: viewModel)
+                    MainWindowQueuePane(viewModel: viewModel)
+                } else {
+                    setupPane
+                    MainWindowLightTablePane(viewModel: viewModel)
+                    MainWindowQueuePane(viewModel: viewModel)
                 }
 
                 MainWindowWarningsPane(
@@ -87,7 +79,7 @@ struct MainWindowView: View {
                 Button {
                     viewModel.startRender()
                 } label: {
-                    Label("Generate Video", systemImage: "play.circle.fill")
+                    Label("Make Video", systemImage: "play.circle.fill")
                 }
                 .disabled(!viewModel.canStartRender)
             }
@@ -144,5 +136,19 @@ struct MainWindowView: View {
     private var exportPane: some View {
         MainWindowExportPane(viewModel: viewModel)
             .frame(minWidth: 520, maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    private var setupPane: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: sectionSpacing) {
+                workflowPane
+                exportPane
+            }
+
+            VStack(alignment: .leading, spacing: sectionSpacing) {
+                workflowPane
+                exportPane
+            }
+        }
     }
 }

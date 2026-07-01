@@ -83,7 +83,7 @@ final class MainWindowViewModel: ObservableObject {
         var label: String {
             switch self {
             case .monthYear:
-                return "Month/Year"
+                return "One Month"
             case .album:
                 return "Album"
             }
@@ -125,6 +125,12 @@ final class MainWindowViewModel: ObservableObject {
         let monthYearContext: ResolvedMonthYearContext
         let metadata: PlexTVMetadata
         let outputBaseFilename: String
+    }
+
+    private struct RenderReadiness {
+        let isReady: Bool
+        let title: String
+        let description: String
     }
 
     struct RenderCompletionSummary: Equatable {
@@ -507,7 +513,7 @@ final class MainWindowViewModel: ObservableObject {
     private static let defaultTitleDurationSeconds = 10.0
     private static let defaultCrossfadeDurationSeconds = 1.0
     private static let defaultStillImageDurationSeconds = 5.0
-    private static let minimumSelectableYear = 2000
+    private static let minimumSelectableYear = 1979
     private static let maximumSelectableYear = 2030
     private static let renderSettingsDefaultsKey = "MainWindowViewModel.renderSettings.v1"
     private static let liveSnapshotIntervalSeconds: TimeInterval = 3 * 60
@@ -738,7 +744,7 @@ final class MainWindowViewModel: ObservableObject {
     }
 
     var canStartRender: Bool {
-        !isRendering && !isPreparingYearQueue && renderTask == nil
+        currentRenderReadiness.isReady
     }
 
     var canRunFPSBakeoff: Bool {
@@ -765,6 +771,18 @@ final class MainWindowViewModel: ObservableObject {
         !isRendering
     }
 
+    var renderReadinessTitle: String {
+        currentRenderReadiness.title
+    }
+
+    var renderReadinessDescription: String {
+        currentRenderReadiness.description
+    }
+
+    var isCurrentRenderReady: Bool {
+        currentRenderReadiness.isReady
+    }
+
     var canClearQueue: Bool {
         !isRendering && !isPreparingYearQueue && !queuedRenderJobs.isEmpty
     }
@@ -774,7 +792,7 @@ final class MainWindowViewModel: ObservableObject {
     }
 
     var canAddCurrentSettingsToQueue: Bool {
-        !isRendering && !isPreparingYearQueue
+        currentRenderReadiness.isReady
     }
 
     var canAddSelectedYearToQueue: Bool {
@@ -793,11 +811,11 @@ final class MainWindowViewModel: ObservableObject {
     }
 
     var addCurrentSettingsToQueueLabel: String {
-        showsSelectedYearQueueAction ? "Add Selected Month" : "Add Current Settings"
+        showsSelectedYearQueueAction ? "Queue This Month" : "Add This Video to Queue"
     }
 
     var selectedYearQueueDescription: String {
-        "Scans \(yearQueueLabelYear) and adds one queued job per month that has Photos media. Month-based filenames are generated automatically."
+        "Queue every non-empty month in \(yearQueueLabelYear). Month-based filenames are generated automatically."
     }
 
     var yearQueueLabelYear: Int {
@@ -846,7 +864,7 @@ final class MainWindowViewModel: ObservableObject {
     }
 
     var settingsSummaryDescription: String {
-        let baseline = hasCustomStyleOrExportSettings ? "Custom settings" : "Plex defaults"
+        let baseline = hasCustomStyleOrExportSettings ? "Custom output settings" : "Recommended Plex/Infuse output"
         let titleLabel = includeOpeningTitle ? "\(String(format: "%.2fs", titleDurationSeconds)) title" : "no title card"
         let exportLabel = [
             containerLabel(for: selectedContainer),
@@ -859,9 +877,21 @@ final class MainWindowViewModel: ObservableObject {
         return "\(baseline) · \(titleLabel) · \(exportLabel)"
     }
 
+    var outputPresetTitle: String {
+        hasCustomStyleOrExportSettings ? "Custom output settings" : "Best for Plex, Infuse, and Apple TV"
+    }
+
+    var outputPresetDescription: String {
+        if hasCustomStyleOrExportSettings {
+            return "One or more output settings differ from the recommended HDR MP4 preset. Review Advanced if you meant to tune encoding, compatibility, diagnostics, or timing."
+        }
+
+        return "Recommended HDR MP4 output with Plex metadata, Apple TV compatible Smart timing, HEVC video, and bundled FFmpeg by default."
+    }
+
     var queueStatusDescription: String {
         if queuedRenderJobs.isEmpty {
-            return "Add a job to freeze the current form settings, then start the queue when you're ready."
+            return "For batch exports, add this video to the queue. The normal path is to make one video now."
         }
 
         let completedCount = queuedRenderJobs.filter { $0.state == .completed }.count
@@ -929,6 +959,70 @@ final class MainWindowViewModel: ObservableObject {
             return nil
         }
         return "A file with that name already exists. This render will save as \(resolvedName)."
+    }
+
+    private var currentRenderReadiness: RenderReadiness {
+        if isRendering || renderTask != nil {
+            return RenderReadiness(
+                isReady: false,
+                title: "Making video",
+                description: "Wait for the current render to finish, or cancel it before starting another one."
+            )
+        }
+
+        if isPreparingYearQueue {
+            return RenderReadiness(
+                isReady: false,
+                title: "Scanning year",
+                description: "Finish or cancel the full-year Photos scan before making a video."
+            )
+        }
+
+        let snapshot = makeCurrentRenderSnapshot()
+        switch snapshot.sourceMode {
+        case .folder:
+            guard snapshot.selectedFolderURL != nil else {
+                return RenderReadiness(
+                    isReady: false,
+                    title: "Choose a source folder",
+                    description: "Pick the folder that contains the photos and videos for this movie."
+                )
+            }
+
+        case .photos:
+            if snapshot.selectedPhotosFilterMode == .album {
+                let selectedAlbumID = snapshot.selectedPhotoAlbumID.trimmingCharacters(in: .whitespacesAndNewlines)
+                if isLoadingPhotoAlbums {
+                    return RenderReadiness(
+                        isReady: false,
+                        title: "Loading Photos albums",
+                        description: "Wait for albums to finish loading, then choose the album to export."
+                    )
+                }
+
+                if selectedAlbumID.isEmpty, hasPhotoAlbums {
+                    return RenderReadiness(
+                        isReady: false,
+                        title: "Choose a Photos album",
+                        description: "Select the album to export before making a video."
+                    )
+                }
+
+                if selectedAlbumID.isEmpty, !photoAlbumsStatusMessage.isEmpty {
+                    return RenderReadiness(
+                        isReady: false,
+                        title: "No Photos album selected",
+                        description: photoAlbumsStatusMessage
+                    )
+                }
+            }
+        }
+
+        return RenderReadiness(
+            isReady: true,
+            title: "Ready to make",
+            description: "Will use \(queueSourceSummary(for: snapshot)) and save \(resolvedOutputFilenamePreview(for: snapshot)) in \(snapshot.outputDirectoryURL.path)."
+        )
     }
 
     var currentRenderDrawerDescription: String {
@@ -1258,7 +1352,7 @@ final class MainWindowViewModel: ObservableObject {
         let baseSnapshot = makeCurrentRenderSnapshot()
         isPreparingYearQueue = true
         preparingYearQueueTargetYear = baseSnapshot.selectedYear
-        statusMessage = "Scanning Photos for \(baseSnapshot.selectedYear)..."
+        statusMessage = "Preflight: scanning Photos for \(baseSnapshot.selectedYear)..."
 
         yearQueueScanTask = Task {
             await queueSelectedYearRenders(from: baseSnapshot)
@@ -1369,7 +1463,7 @@ final class MainWindowViewModel: ObservableObject {
         snapshot: QueuedRenderSnapshot,
         completionSummarySnapshot: SingleRenderSummarySnapshot
     ) async {
-        beginRenderRun(status: "Preparing media...", initialProgress: 0.01)
+        beginRenderRun(status: "Preflight: checking source media...", initialProgress: 0.01)
         activeRenderIdentity = makeActiveRenderIdentity(
             snapshot: snapshot,
             drawerDescription: "Single render in progress",
@@ -1505,7 +1599,7 @@ final class MainWindowViewModel: ObservableObject {
         let totalJobCount = queuedRenderJobs.count
         let completedCount = queuedRenderJobs.filter { $0.state == .completed }.count
 
-        beginRenderRun(status: "Preparing queued render...", initialProgress: 0.01)
+        beginRenderRun(status: "Preflight: preparing queued render...", initialProgress: 0.01)
         isQueueRunning = true
         isQueuePauseRequested = false
         updateQueueProgress(completedCount: completedCount, totalCount: totalJobCount)
@@ -1527,7 +1621,7 @@ final class MainWindowViewModel: ObservableObject {
             queuedRenderJobs[index].state = .running
             queuedRenderJobs[index].lastResultMessage = ""
             queuedRenderJobs[index].resultSummary = nil
-            renderStatusDetail = "Preparing media..."
+            renderStatusDetail = "Preflight: checking source media..."
             setCurrentItemProgress(0.01)
             updateQueueProgress(completedCount: completedBeforeJob, totalCount: totalCount)
             updateRenderingStatusMessage()
@@ -3229,7 +3323,7 @@ final class MainWindowViewModel: ObservableObject {
             },
             statusHandler: { [weak self] status in
                 Task { @MainActor in
-                    self?.renderStatusDetail = status
+                    self?.renderStatusDetail = "Preflight: \(status)"
                     self?.updateRenderingStatusMessage()
                 }
             }

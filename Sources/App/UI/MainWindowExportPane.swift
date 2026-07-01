@@ -30,26 +30,26 @@ struct MainWindowExportPane: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } label: {
-            MainWindowSectionLabel(title: "Video Details", accent: MainWindowTheme.accentNavy)
+            MainWindowSectionLabel(title: "Movie Details", accent: MainWindowTheme.accentNavy)
         }
     }
 
     private var libraryMetadataSection: some View {
         VStack(alignment: .leading, spacing: rowSpacing) {
-            Text("Library Metadata")
+            Text("Video Library Details")
                 .font(.subheadline.weight(.medium))
 
             Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: rowSpacing) {
                 GridRow {
-                    Text("Series")
+                    Text("Collection")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .frame(width: 88, alignment: .leading)
-                    TextField("Series Title", text: $viewModel.plexShowTitle)
+                    TextField("Collection Name", text: $viewModel.plexShowTitle)
                 }
             }
 
-            MainWindowCaption(text: "Used for Plex metadata and the automatic filename.")
+            MainWindowCaption(text: "Used for video library metadata and the automatic filename.")
             metadataStatusRow
         }
     }
@@ -81,7 +81,7 @@ struct MainWindowExportPane: View {
 
     private var saveLocationSection: some View {
         VStack(alignment: .leading, spacing: rowSpacing) {
-            Text("Save Location")
+            Text("Save As")
                 .font(.subheadline.weight(.medium))
 
             Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: rowSpacing) {
@@ -409,7 +409,7 @@ struct MainWindowAdvancedExportSettingsView: View {
                 HStack {
                     Toggle("Write diagnostics log (.log)", isOn: $viewModel.writeDiagnosticsLog)
                     Spacer()
-                    Button("Reset Style & Export to Plex Defaults") {
+                    Button("Restore Recommended Output") {
                         viewModel.resetStyleAndExportSettingsToPlexDefaults()
                     }
                     .disabled(!viewModel.canResetExportSettings)
@@ -417,7 +417,7 @@ struct MainWindowAdvancedExportSettingsView: View {
 
                 VStack(alignment: .leading, spacing: rowSpacing) {
                     Toggle("Write diagnostics log (.log)", isOn: $viewModel.writeDiagnosticsLog)
-                    Button("Reset Style & Export to Plex Defaults") {
+                    Button("Restore Recommended Output") {
                         viewModel.resetStyleAndExportSettingsToPlexDefaults()
                     }
                     .disabled(!viewModel.canResetExportSettings)

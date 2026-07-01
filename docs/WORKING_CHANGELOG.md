@@ -16,7 +16,11 @@ Internal notes for building public-facing changelogs. Keep entries understandabl
 - Auto-selected queue details now use a review-oriented label instead of implying the user explicitly selected that job.
 - HDR HEVC exports now use the bakeoff-approved mixed-cadence timing by default, reducing file size while keeping title/opening-title motion at 30 fps. [public candidate]
 - Smart mixed-cadence HDR HEVC exports now keep video sections capped at 60 fps by default for Plex/Infuse Apple TV compatibility. [public candidate]
-- The main window now makes source, opening title, queue, and video details clearer, with final filename and save folder previews shown before optional custom name or description editing. [public candidate]
+- The main window now starts with source, title, save, and movie details before the render preview, and treats batch exports as optional instead of making the queue compete with the one-video path. [public candidate]
+- Export settings now present the recommended Plex/Infuse/Apple TV output preset first, with technical codec, HDR, bitrate, frame-rate, and diagnostics controls tucked behind Advanced. [public candidate]
+- The render preview now shows a ready/not-ready summary with the source, destination, and final filename, and blocks one-off or queued renders until required choices like a folder or Photos album are selected. [public candidate]
+- The Source pane now includes its own Folder / Apple Photos switch and clearer Apple Photos choices for one-month versus album exports, so the first setup step no longer depends on the toolbar. [public candidate]
+- The year pickers now allow selecting 1979 as the earliest year.
 
 ### Fixed
 - Late Photos album refreshes no longer update album selection after the user leaves album mode.
@@ -34,3 +38,4 @@ Internal notes for building public-facing changelogs. Keep entries understandabl
 - Fixed packaged app assembly so universal builds preserve separate architecture slices before combining them, and made bundled-tool architecture validation match the `lipo -archs` output used by current Xcode tools.
 - Added Developer ID disk-image signing support to the DMG packaging script so notarized release artifacts can pass Gatekeeper assessment cleanly.
 - Made the packaged-app build script choose an installed full Xcode developer directory when the machine is currently pointed at Command Line Tools.
+- Added a test wrapper that runs SwiftPM from a scratch path outside the repo so stale `.build/out` metadata does not keep breaking test runs.

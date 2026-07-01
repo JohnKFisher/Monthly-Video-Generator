@@ -1,0 +1,662 @@
+{
+  "Package.swift": {
+    "mtime": 1774057141.393397,
+    "ast_hash": "0145f70230eb00fef5300c30c4979646",
+    "semantic_hash": "0145f70230eb00fef5300c30c4979646"
+  },
+  "Sources/App/AppMain.swift": {
+    "mtime": 1777472069.5288932,
+    "ast_hash": "856c43e4bf3658f21821d068a00da4f0",
+    "semantic_hash": "856c43e4bf3658f21821d068a00da4f0"
+  },
+  "Sources/App/Resources/AppLinks.json": {
+    "mtime": 1777472064.6296723,
+    "ast_hash": "d4b1821766401bbd1dab7f64bf61ea36",
+    "semantic_hash": "d4b1821766401bbd1dab7f64bf61ea36"
+  },
+  "Sources/App/Support/AppMetadata.swift": {
+    "mtime": 1776778346.1035526,
+    "ast_hash": "8ac8f4795e025bd5498163219f39f0dc",
+    "semantic_hash": "8ac8f4795e025bd5498163219f39f0dc"
+  },
+  "Sources/App/Support/AppSceneID.swift": {
+    "mtime": 1776788157.6669352,
+    "ast_hash": "e32f0f59fe1a7090c2a24ed28ef5eb75",
+    "semantic_hash": "e32f0f59fe1a7090c2a24ed28ef5eb75"
+  },
+  "Sources/App/Support/AppShellPreferenceKeys.swift": {
+    "mtime": 1777481232.7877073,
+    "ast_hash": "89b5c5fc99c932ae7de8722d8eaed9f7",
+    "semantic_hash": "89b5c5fc99c932ae7de8722d8eaed9f7"
+  },
+  "Sources/App/Support/AppShellPreferencesStore.swift": {
+    "mtime": 1776788721.8903944,
+    "ast_hash": "e148a46e26d43ff3132739e6b4491cb7",
+    "semantic_hash": "e148a46e26d43ff3132739e6b4491cb7"
+  },
+  "Sources/App/Support/FileWorkspaceCoordinator.swift": {
+    "mtime": 1776788528.6991045,
+    "ast_hash": "777a25f23d40e3066cf27901bd7081f2",
+    "semantic_hash": "777a25f23d40e3066cf27901bd7081f2"
+  },
+  "Sources/App/Support/FolderSelectionCoordinator.swift": {
+    "mtime": 1776788528.4752662,
+    "ast_hash": "405e25613ca83922164293702b161494",
+    "semantic_hash": "405e25613ca83922164293702b161494"
+  },
+  "Sources/App/Support/LiveRenderSnapshotService.swift": {
+    "mtime": 1776993447.6128109,
+    "ast_hash": "52fd2cc774d9c5c50287031ef538cc6e",
+    "semantic_hash": "52fd2cc774d9c5c50287031ef538cc6e"
+  },
+  "Sources/App/UI/AboutWindowView.swift": {
+    "mtime": 1776788197.334632,
+    "ast_hash": "972c24cb5c94a66ebf2329ea2fbb4eea",
+    "semantic_hash": "972c24cb5c94a66ebf2329ea2fbb4eea"
+  },
+  "Sources/App/UI/AppSettingsView.swift": {
+    "mtime": 1782673981.9630148,
+    "ast_hash": "0a5b6e3a329bc718daee5eeefc488ec9",
+    "semantic_hash": "0a5b6e3a329bc718daee5eeefc488ec9"
+  },
+  "Sources/App/UI/MainWindowCommands.swift": {
+    "mtime": 1782488691.9384754,
+    "ast_hash": "e38440f6ed813362e66c908a0dd9ce00",
+    "semantic_hash": "e38440f6ed813362e66c908a0dd9ce00"
+  },
+  "Sources/App/UI/MainWindowExportPane.swift": {
+    "mtime": 1782672515.840688,
+    "ast_hash": "c0a45c8318e7827faec44df71eb1d061",
+    "semantic_hash": "c0a45c8318e7827faec44df71eb1d061"
+  },
+  "Sources/App/UI/MainWindowInputPane.swift": {
+    "mtime": 1782672521.487299,
+    "ast_hash": "5bcfe6662199bb7ff976e2bb94faa84d",
+    "semantic_hash": "5bcfe6662199bb7ff976e2bb94faa84d"
+  },
+  "Sources/App/UI/MainWindowQueuePane.swift": {
+    "mtime": 1782672531.3189473,
+    "ast_hash": "e47e58b515c086a9c630a3ccc200f3a8",
+    "semantic_hash": "e47e58b515c086a9c630a3ccc200f3a8"
+  },
+  "Sources/App/UI/MainWindowStatusPane.swift": {
+    "mtime": 1782672536.1406114,
+    "ast_hash": "4bd6702e7a61bebee5e11ce7be369e10",
+    "semantic_hash": "4bd6702e7a61bebee5e11ce7be369e10"
+  },
+  "Sources/App/UI/MainWindowStylePane.swift": {
+    "mtime": 1782672525.4202192,
+    "ast_hash": "7327893dcbfba5791527f7c326e19373",
+    "semantic_hash": "7327893dcbfba5791527f7c326e19373"
+  },
+  "Sources/App/UI/MainWindowSupportViews.swift": {
+    "mtime": 1782444571.2350404,
+    "ast_hash": "2fa91157c2fd0d2dbf487aec9b45b963",
+    "semantic_hash": "2fa91157c2fd0d2dbf487aec9b45b963"
+  },
+  "Sources/App/UI/MainWindowView.swift": {
+    "mtime": 1777508130.5760198,
+    "ast_hash": "8856f00a6f3021b8721cfb133823b5e8",
+    "semantic_hash": "8856f00a6f3021b8721cfb133823b5e8"
+  },
+  "Sources/App/UI/MainWindowViewModel.swift": {
+    "mtime": 1782709426.3355694,
+    "ast_hash": "fe9b8d7093d0a1b66adc4c1bb9ebc4dc",
+    "semantic_hash": "fe9b8d7093d0a1b66adc4c1bb9ebc4dc"
+  },
+  "Sources/App/UI/MainWindowWarningsPane.swift": {
+    "mtime": 1776788412.4128428,
+    "ast_hash": "c004af9dc4337ebed9cdf5825f36cb00",
+    "semantic_hash": "c004af9dc4337ebed9cdf5825f36cb00"
+  },
+  "Sources/App/UI/TemporaryTestingExportSupport.swift": {
+    "mtime": 1774887651.2349412,
+    "ast_hash": "e31eba825b0e65f5fd27c6a12a320806",
+    "semantic_hash": "e31eba825b0e65f5fd27c6a12a320806"
+  },
+  "Sources/Core/Discovery/FolderMediaDiscoveryService.swift": {
+    "mtime": 1774011140.1401,
+    "ast_hash": "75738593fe89d61a3fb59bc50c462819",
+    "semantic_hash": "75738593fe89d61a3fb59bc50c462819"
+  },
+  "Sources/Core/Export/ExportProfileManager.swift": {
+    "mtime": 1782679271.005709,
+    "ast_hash": "f4401f8e502028eafd294a65d025fe75",
+    "semantic_hash": "f4401f8e502028eafd294a65d025fe75"
+  },
+  "Sources/Core/Models/ExportProfile.swift": {
+    "mtime": 1776908519.2308075,
+    "ast_hash": "59ece92625bf1cf57b74a36e6bdaeb21",
+    "semantic_hash": "59ece92625bf1cf57b74a36e6bdaeb21"
+  },
+  "Sources/Core/Models/MediaModels.swift": {
+    "mtime": 1773946312.671882,
+    "ast_hash": "38ceb3e8d00ee07c2f77d46025bfa5fb",
+    "semantic_hash": "38ceb3e8d00ee07c2f77d46025bfa5fb"
+  },
+  "Sources/Core/Models/MonthYear.swift": {
+    "mtime": 1772736865.5027509,
+    "ast_hash": "c61d8fde38de0407b0e81d150a73d610",
+    "semantic_hash": "c61d8fde38de0407b0e81d150a73d610"
+  },
+  "Sources/Core/Models/PlexTVMetadata.swift": {
+    "mtime": 1774887651.2364674,
+    "ast_hash": "8fba15f528325520539d5924d2f07c25",
+    "semantic_hash": "8fba15f528325520539d5924d2f07c25"
+  },
+  "Sources/Core/Models/RenderRequest.swift": {
+    "mtime": 1776976113.8611612,
+    "ast_hash": "1ffb5c8a62ce6838ccaba08682d0229d",
+    "semantic_hash": "1ffb5c8a62ce6838ccaba08682d0229d"
+  },
+  "Sources/Core/Models/StyleProfile.swift": {
+    "mtime": 1774057141.3946302,
+    "ast_hash": "7b42ab3b20789320af7966b47f8dca93",
+    "semantic_hash": "7b42ab3b20789320af7966b47f8dca93"
+  },
+  "Sources/Core/Render/AVFoundationRenderEngine.swift": {
+    "mtime": 1782673800.4489448,
+    "ast_hash": "57435858e9f67f31d4c3e6e05893e475",
+    "semantic_hash": "57435858e9f67f31d4c3e6e05893e475"
+  },
+  "Sources/Core/Render/CaptureDateOverlayFactory.swift": {
+    "mtime": 1773946312.6727402,
+    "ast_hash": "ca4f5e686c08aa786ac81acf474d5c7f",
+    "semantic_hash": "ca4f5e686c08aa786ac81acf474d5c7f"
+  },
+  "Sources/Core/Render/FFmpeg/FFmpegBinaryResolver.swift": {
+    "mtime": 1776953310.494934,
+    "ast_hash": "c6d89f3a20e5354839fc7ee190238856",
+    "semantic_hash": "c6d89f3a20e5354839fc7ee190238856"
+  },
+  "Sources/Core/Render/FFmpeg/FFmpegCapabilityProbe.swift": {
+    "mtime": 1773946312.67305,
+    "ast_hash": "50339a55065b6d65bb514b2bc660ec84",
+    "semantic_hash": "50339a55065b6d65bb514b2bc660ec84"
+  },
+  "Sources/Core/Render/FFmpeg/FFmpegChunkedPipeline.swift": {
+    "mtime": 1776976225.3846931,
+    "ast_hash": "c758dda87b6355ecf42580e9e85c06b1",
+    "semantic_hash": "c758dda87b6355ecf42580e9e85c06b1"
+  },
+  "Sources/Core/Render/FFmpeg/FFmpegCommandBuilder.swift": {
+    "mtime": 1782501653.3686337,
+    "ast_hash": "23a5f489faa57abb49efe42a55c9384e",
+    "semantic_hash": "23a5f489faa57abb49efe42a55c9384e"
+  },
+  "Sources/Core/Render/FFmpeg/FFmpegHDRRenderer.swift": {
+    "mtime": 1782443459.3301668,
+    "ast_hash": "505fa9f589da42716b5e1861ae9999f9",
+    "semantic_hash": "505fa9f589da42716b5e1861ae9999f9"
+  },
+  "Sources/Core/Render/FFmpeg/FFmpegProgressParser.swift": {
+    "mtime": 1773946312.673922,
+    "ast_hash": "89caa6e3ae0d97c4477801a49186505a",
+    "semantic_hash": "89caa6e3ae0d97c4477801a49186505a"
+  },
+  "Sources/Core/Render/FFmpeg/FFmpegProgressivePipeline.swift": {
+    "mtime": 1782679270.5967462,
+    "ast_hash": "209e2a1cbf2a6d65265e2998e1b21686",
+    "semantic_hash": "209e2a1cbf2a6d65265e2998e1b21686"
+  },
+  "Sources/Core/Render/FFmpeg/FFmpegProgressiveResumeStore.swift": {
+    "mtime": 1774011140.1413164,
+    "ast_hash": "a777b8f5d3e4928a16744bc85ddede25",
+    "semantic_hash": "a777b8f5d3e4928a16744bc85ddede25"
+  },
+  "Sources/Core/Render/FFmpeg/FFmpegSupportFileLocator.swift": {
+    "mtime": 1773946312.674362,
+    "ast_hash": "079bf8ee6989b44dbb3ccf8edd08072a",
+    "semantic_hash": "079bf8ee6989b44dbb3ccf8edd08072a"
+  },
+  "Sources/Core/Render/FFmpeg/FFmpegTypes.swift": {
+    "mtime": 1782501645.5110838,
+    "ast_hash": "f0956749e3495768adef480a0056971d",
+    "semantic_hash": "f0956749e3495768adef480a0056971d"
+  },
+  "Sources/Core/Render/FFmpeg/FFprobeSourceMetadataProbe.swift": {
+    "mtime": 1773946312.6746762,
+    "ast_hash": "c0b12f587fd86cbbe3c902e671f2981e",
+    "semantic_hash": "c0b12f587fd86cbbe3c902e671f2981e"
+  },
+  "Sources/Core/Render/OpeningTitleTreatment.swift": {
+    "mtime": 1774057141.3955514,
+    "ast_hash": "c5a58a70359fec501abe76db0484e561",
+    "semantic_hash": "c5a58a70359fec501abe76db0484e561"
+  },
+  "Sources/Core/Render/PhotoAssetMaterializing.swift": {
+    "mtime": 1772736865.503908,
+    "ast_hash": "21b941a01b7589bc14b79dfb479c5fcd",
+    "semantic_hash": "21b941a01b7589bc14b79dfb479c5fcd"
+  },
+  "Sources/Core/Render/RenderCoordinator.swift": {
+    "mtime": 1782489014.8711567,
+    "ast_hash": "d76865e6aaf1a74f7121ffd09495868a",
+    "semantic_hash": "d76865e6aaf1a74f7121ffd09495868a"
+  },
+  "Sources/Core/Render/RenderError.swift": {
+    "mtime": 1773946312.674901,
+    "ast_hash": "a0fedf2ab2a0aacbedd7418780cbb023",
+    "semantic_hash": "a0fedf2ab2a0aacbedd7418780cbb023"
+  },
+  "Sources/Core/Render/RenderExecutionOptions.swift": {
+    "mtime": 1782673753.9856825,
+    "ast_hash": "8aa44eaf25045165616f56241bd7b194",
+    "semantic_hash": "8aa44eaf25045165616f56241bd7b194"
+  },
+  "Sources/Core/Render/RenderSizing.swift": {
+    "mtime": 1773946312.6749773,
+    "ast_hash": "fc312ff3aac1c20017cd8e04f386b6c5",
+    "semantic_hash": "fc312ff3aac1c20017cd8e04f386b6c5"
+  },
+  "Sources/Core/Render/RunReportService.swift": {
+    "mtime": 1776953220.9984114,
+    "ast_hash": "b1ce88880de745191db5d84f7df99d2e",
+    "semantic_hash": "b1ce88880de745191db5d84f7df99d2e"
+  },
+  "Sources/Core/Render/StillImageClipFactory.swift": {
+    "mtime": 1774057141.3966358,
+    "ast_hash": "cddfc0156bd0fc1cbc3131177120952a",
+    "semantic_hash": "cddfc0156bd0fc1cbc3131177120952a"
+  },
+  "Sources/Core/Render/TitleTreatmentPreviewGeneratorService.swift": {
+    "mtime": 1774057141.39703,
+    "ast_hash": "8baf96a34721cf8605a29a0ab2e9f2c9",
+    "semantic_hash": "8baf96a34721cf8605a29a0ab2e9f2c9"
+  },
+  "Sources/Core/Support/AppOwnedTemporaryDirectoryCleaner.swift": {
+    "mtime": 1782673829.06982,
+    "ast_hash": "32bf17d32702ddf976dcfdbce3312fde",
+    "semantic_hash": "32bf17d32702ddf976dcfdbce3312fde"
+  },
+  "Sources/Core/Support/UncheckedSendableReference.swift": {
+    "mtime": 1773946312.675331,
+    "ast_hash": "dd7fd4e8a05e8a5f429c06d328d7cca2",
+    "semantic_hash": "dd7fd4e8a05e8a5f429c06d328d7cca2"
+  },
+  "Sources/Core/Timeline/MP4ChapterResolver.swift": {
+    "mtime": 1773946312.6754596,
+    "ast_hash": "e5cfa8279fa5b2bd3c08136ce8eefd1c",
+    "semantic_hash": "e5cfa8279fa5b2bd3c08136ce8eefd1c"
+  },
+  "Sources/Core/Timeline/OpeningTitleCardContextResolver.swift": {
+    "mtime": 1773946312.6755197,
+    "ast_hash": "01a9ef24529e2b62a6f117801cce743f",
+    "semantic_hash": "01a9ef24529e2b62a6f117801cce743f"
+  },
+  "Sources/Core/Timeline/OpeningTitleCardDescriptor.swift": {
+    "mtime": 1774057141.3973508,
+    "ast_hash": "3dab1b26aa245ebadaef35ba4be81d3f",
+    "semantic_hash": "3dab1b26aa245ebadaef35ba4be81d3f"
+  },
+  "Sources/Core/Timeline/OpeningTitlePreviewSelector.swift": {
+    "mtime": 1774057141.3975933,
+    "ast_hash": "c390c629e55fa41bde02552932bfa971",
+    "semantic_hash": "c390c629e55fa41bde02552932bfa971"
+  },
+  "Sources/Core/Timeline/Timeline.swift": {
+    "mtime": 1773946312.6756759,
+    "ast_hash": "ae8a3bea738019c4c2da76a3f0af1288",
+    "semantic_hash": "ae8a3bea738019c4c2da76a3f0af1288"
+  },
+  "Sources/Core/Timeline/TimelineBuilder.swift": {
+    "mtime": 1776976113.9034986,
+    "ast_hash": "8300891da635739eaa1142e9840bca01",
+    "semantic_hash": "8300891da635739eaa1142e9840bca01"
+  },
+  "Sources/Core/Utilities/CaptureDateOverlayFormatter.swift": {
+    "mtime": 1773946312.6758585,
+    "ast_hash": "b9c65fda5f03918429e3977e953dbd15",
+    "semantic_hash": "b9c65fda5f03918429e3977e953dbd15"
+  },
+  "Sources/Core/Utilities/MediaSorting.swift": {
+    "mtime": 1772736865.5045776,
+    "ast_hash": "b089d9b26c09ac123995792a9835cc11",
+    "semantic_hash": "b089d9b26c09ac123995792a9835cc11"
+  },
+  "Sources/Core/Utilities/OutputPathResolver.swift": {
+    "mtime": 1782444439.3601384,
+    "ast_hash": "0fbfc9cdf02619cd028ef9c15a904d0d",
+    "semantic_hash": "0fbfc9cdf02619cd028ef9c15a904d0d"
+  },
+  "Sources/Integrations/Photos/PhotoKitAssetMaterializer.swift": {
+    "mtime": 1782673876.266508,
+    "ast_hash": "1e7ae12a002576245b175f5a05ab1ba7",
+    "semantic_hash": "1e7ae12a002576245b175f5a05ab1ba7"
+  },
+  "Sources/Integrations/Photos/PhotoKitMediaDiscoveryService.swift": {
+    "mtime": 1773946312.6765919,
+    "ast_hash": "c91810e001d8e3d6dd638b5be12d4a9b",
+    "semantic_hash": "c91810e001d8e3d6dd638b5be12d4a9b"
+  },
+  "Sources/TitleTreatmentPreviewGenerator/main.swift": {
+    "mtime": 1774057141.3982003,
+    "ast_hash": "ca1525ffa1b353695abfbd0552095e13",
+    "semantic_hash": "ca1525ffa1b353695abfbd0552095e13"
+  },
+  "Tests/CoreTests/AppOwnedTemporaryDirectoryCleanerTests.swift": {
+    "mtime": 1782674000.6165705,
+    "ast_hash": "3eac977da98fd3a9f30a40672119f437",
+    "semantic_hash": "3eac977da98fd3a9f30a40672119f437"
+  },
+  "Tests/CoreTests/CaptureDateOverlayBenchmarkTests.swift": {
+    "mtime": 1773946312.6767256,
+    "ast_hash": "bfc2d80678a121ad4d82b80ddb12abfa",
+    "semantic_hash": "bfc2d80678a121ad4d82b80ddb12abfa"
+  },
+  "Tests/CoreTests/CaptureDateOverlayFactoryTests.swift": {
+    "mtime": 1773946312.6767838,
+    "ast_hash": "915f8388d389bb5a6779817576cc4013",
+    "semantic_hash": "915f8388d389bb5a6779817576cc4013"
+  },
+  "Tests/CoreTests/CaptureDateOverlayFormatterTests.swift": {
+    "mtime": 1773946312.676843,
+    "ast_hash": "f1407854c16436fbad5a85567cda6f29",
+    "semantic_hash": "f1407854c16436fbad5a85567cda6f29"
+  },
+  "Tests/CoreTests/FFmpegChunkedPipelineTests.swift": {
+    "mtime": 1773946312.6769917,
+    "ast_hash": "95ad16a08a2fe1fbc48da94a807322f3",
+    "semantic_hash": "95ad16a08a2fe1fbc48da94a807322f3"
+  },
+  "Tests/CoreTests/FFmpegProgressivePipelineTests.swift": {
+    "mtime": 1782679271.209327,
+    "ast_hash": "12c8d181e20171ecd7308204c075051c",
+    "semantic_hash": "12c8d181e20171ecd7308204c075051c"
+  },
+  "Tests/CoreTests/FFmpegProgressiveResumeStoreTests.swift": {
+    "mtime": 1773946312.6771944,
+    "ast_hash": "776c78b849c87667d59f21797cb50df2",
+    "semantic_hash": "776c78b849c87667d59f21797cb50df2"
+  },
+  "Tests/CoreTests/FolderDiscoveryTests.swift": {
+    "mtime": 1773946312.677281,
+    "ast_hash": "f6e2fea6550f59a7148e4b52bcf8dd5f",
+    "semantic_hash": "f6e2fea6550f59a7148e4b52bcf8dd5f"
+  },
+  "Tests/CoreTests/HDRFFmpegPipelineTests.swift": {
+    "mtime": 1782501782.093283,
+    "ast_hash": "8440721f2df883340b6481b0f94e08ed",
+    "semantic_hash": "8440721f2df883340b6481b0f94e08ed"
+  },
+  "Tests/CoreTests/MP4ChapterResolverTests.swift": {
+    "mtime": 1773946312.6778226,
+    "ast_hash": "dd36a4a4f29df07cae9be4328a4aeb3d",
+    "semantic_hash": "dd36a4a4f29df07cae9be4328a4aeb3d"
+  },
+  "Tests/CoreTests/MainWindowViewModelTests.swift": {
+    "mtime": 1782709426.5570836,
+    "ast_hash": "e75490510f66bf191e879f1d099bff42",
+    "semantic_hash": "e75490510f66bf191e879f1d099bff42"
+  },
+  "Tests/CoreTests/ManualHDRSmokeExportTests.swift": {
+    "mtime": 1773946312.6780534,
+    "ast_hash": "fc691363d6f6cd6a92ab058c8e9fbb97",
+    "semantic_hash": "fc691363d6f6cd6a92ab058c8e9fbb97"
+  },
+  "Tests/CoreTests/ManualStillPipelineInspectionTests.swift": {
+    "mtime": 1773946312.6781232,
+    "ast_hash": "cc61abf420f8e19b073bed93b897b10b",
+    "semantic_hash": "cc61abf420f8e19b073bed93b897b10b"
+  },
+  "Tests/CoreTests/MonthYearBoundaryTests.swift": {
+    "mtime": 1772736865.5053053,
+    "ast_hash": "d72146856077958d5f94bcd2039db45c",
+    "semantic_hash": "d72146856077958d5f94bcd2039db45c"
+  },
+  "Tests/CoreTests/OpeningTitlePreviewSelectorTests.swift": {
+    "mtime": 1774057141.398844,
+    "ast_hash": "ed0abecff9ca85729a8bf090009178e3",
+    "semantic_hash": "ed0abecff9ca85729a8bf090009178e3"
+  },
+  "Tests/CoreTests/OutputPathResolverTests.swift": {
+    "mtime": 1772736865.5054266,
+    "ast_hash": "de0521fc9e2f1291ab0dd4d9f9f49cae",
+    "semantic_hash": "de0521fc9e2f1291ab0dd4d9f9f49cae"
+  },
+  "Tests/CoreTests/PhotoKitAssetMaterializerTests.swift": {
+    "mtime": 1782674014.9370005,
+    "ast_hash": "6e92aed60cdf4d74345e7fefc9656434",
+    "semantic_hash": "6e92aed60cdf4d74345e7fefc9656434"
+  },
+  "Tests/CoreTests/PlexTVMetadataTests.swift": {
+    "mtime": 1774887651.2417796,
+    "ast_hash": "f5e635b71100ad18ba675bf84f3105ac",
+    "semantic_hash": "f5e635b71100ad18ba675bf84f3105ac"
+  },
+  "Tests/CoreTests/RenderDiagnosticsTests.swift": {
+    "mtime": 1776953353.197704,
+    "ast_hash": "fd4ffc5c714fa6c678695c4dc56f3b13",
+    "semantic_hash": "fd4ffc5c714fa6c678695c4dc56f3b13"
+  },
+  "Tests/CoreTests/RenderPipelineTests.swift": {
+    "mtime": 1782678893.5784588,
+    "ast_hash": "10b628a197e22c709766ea4acc6aa055",
+    "semantic_hash": "10b628a197e22c709766ea4acc6aa055"
+  },
+  "Tests/CoreTests/RunReportServiceTests.swift": {
+    "mtime": 1776953338.0843194,
+    "ast_hash": "906942396da457e9cfc0bfdf78adedb8",
+    "semantic_hash": "906942396da457e9cfc0bfdf78adedb8"
+  },
+  "Tests/CoreTests/StillImageClipFactoryTests.swift": {
+    "mtime": 1774023258.306878,
+    "ast_hash": "3d8ac1a2d7c424915889c4d639f575d7",
+    "semantic_hash": "3d8ac1a2d7c424915889c4d639f575d7"
+  },
+  "Tests/CoreTests/TemporaryTestingExportSupportTests.swift": {
+    "mtime": 1774887651.242651,
+    "ast_hash": "04bfc3c34a92244e1736667dbc364edb",
+    "semantic_hash": "04bfc3c34a92244e1736667dbc364edb"
+  },
+  "Tests/CoreTests/TimelineBuilderTests.swift": {
+    "mtime": 1774057141.399388,
+    "ast_hash": "a7bfa15ae8ae6de106328731c453caed",
+    "semantic_hash": "a7bfa15ae8ae6de106328731c453caed"
+  },
+  "Tests/CoreTests/TitleTreatmentPreviewGeneratorTests.swift": {
+    "mtime": 1776778581.1215322,
+    "ast_hash": "adfc18e956b6e2e9d39979d20f7bc129",
+    "semantic_hash": "adfc18e956b6e2e9d39979d20f7bc129"
+  },
+  "scripts/build_app.sh": {
+    "mtime": 1782533662.8992193,
+    "ast_hash": "538cd5b11e7cb891764277e89b00a17d",
+    "semantic_hash": "538cd5b11e7cb891764277e89b00a17d"
+  },
+  "scripts/create_dmg.sh": {
+    "mtime": 1782447026.9822133,
+    "ast_hash": "46d172699bc5188e0ee3f6f21c775e5b",
+    "semantic_hash": "46d172699bc5188e0ee3f6f21c775e5b"
+  },
+  "scripts/fetch_ffmpeg_bundle.sh": {
+    "mtime": 1772736865.50631,
+    "ast_hash": "9b6b1adcec25b92228478857161c8671",
+    "semantic_hash": "9b6b1adcec25b92228478857161c8671"
+  },
+  "scripts/generate_app_icon.swift": {
+    "mtime": 1773946312.6798477,
+    "ast_hash": "f300d154c36b9665adb581cba3d60f8a",
+    "semantic_hash": "f300d154c36b9665adb581cba3d60f8a"
+  },
+  "scripts/prepare_release.sh": {
+    "mtime": 1776736153.1911638,
+    "ast_hash": "b9366cb946ff94ce85f27d6d353ea416",
+    "semantic_hash": "b9366cb946ff94ce85f27d6d353ea416"
+  },
+  "scripts/retag_mp4.sh": {
+    "mtime": 1773946312.679926,
+    "ast_hash": "5972d58074b83ecf4fa06a3c8fd8b47b",
+    "semantic_hash": "5972d58074b83ecf4fa06a3c8fd8b47b"
+  },
+  "scripts/show_metadata.sh": {
+    "mtime": 1773946312.6799955,
+    "ast_hash": "8ba86f773d6a584be147428caacbb708",
+    "semantic_hash": "8ba86f773d6a584be147428caacbb708"
+  },
+  "scripts/test.sh": {
+    "mtime": 1782709758.9476652,
+    "ast_hash": "dc20916e9e489f28329ca867f8526fab",
+    "semantic_hash": "dc20916e9e489f28329ca867f8526fab"
+  },
+  ".github/workflows/build.yml": {
+    "mtime": 1782709694.7555332,
+    "ast_hash": "ac673287a43442708f5ea02062e6debf",
+    "semantic_hash": "ac673287a43442708f5ea02062e6debf"
+  },
+  ".github/workflows/release.yml": {
+    "mtime": 1782709694.9654481,
+    "ast_hash": "22e3cbc3514deadc64d28cf9516d402a",
+    "semantic_hash": "22e3cbc3514deadc64d28cf9516d402a"
+  },
+  "AGENTS.md": {
+    "mtime": 1782707605.5275693,
+    "ast_hash": "0cfb80a04d7f77e855e27a6857db6a59",
+    "semantic_hash": "0cfb80a04d7f77e855e27a6857db6a59"
+  },
+  "CLAUDE.md": {
+    "mtime": 1778272860.5367033,
+    "ast_hash": "4fcce3a593dcd5d5b28fea7e62b3a5d1",
+    "semantic_hash": "4fcce3a593dcd5d5b28fea7e62b3a5d1"
+  },
+  "README.md": {
+    "mtime": 1782709695.185075,
+    "ast_hash": "a28c3477d5149652d41f90ad54303de2",
+    "semantic_hash": "a28c3477d5149652d41f90ad54303de2"
+  },
+  "docs/DECISIONS.md": {
+    "mtime": 1782679308.4173348,
+    "ast_hash": "414cda8db2b197ebcc9ef00e41efbe51",
+    "semantic_hash": "414cda8db2b197ebcc9ef00e41efbe51"
+  },
+  "docs/HDR_COLOR_REFERENCE.md": {
+    "mtime": 1777781439.923063,
+    "ast_hash": "e5aae2876247a6a784097e2a4b8ef83b",
+    "semantic_hash": "e5aae2876247a6a784097e2a4b8ef83b"
+  },
+  "docs/THIRD_PARTY.md": {
+    "mtime": 1777033865.1357408,
+    "ast_hash": "2301c8b9fcbe8b6b01705039e5ecd39e",
+    "semantic_hash": "2301c8b9fcbe8b6b01705039e5ecd39e"
+  },
+  "docs/WHERE_WE_STAND.md": {
+    "mtime": 1782709791.977002,
+    "ast_hash": "a6b9a84b68f5bd0f25704edc7c011614",
+    "semantic_hash": "a6b9a84b68f5bd0f25704edc7c011614"
+  },
+  "docs/WORKING_CHANGELOG.md": {
+    "mtime": 1782709695.39194,
+    "ast_hash": "86a6ec9d484de02da7b5afacb7ed9379",
+    "semantic_hash": "86a6ec9d484de02da7b5afacb7ed9379"
+  },
+  "docs/agent-rules/about-distribution.md": {
+    "mtime": 1778526825.554082,
+    "ast_hash": "44a2a8036ca0c2738876ebc63970d995",
+    "semantic_hash": "44a2a8036ca0c2738876ebc63970d995"
+  },
+  "docs/agent-rules/ai-inference.md": {
+    "mtime": 1778273006.2131932,
+    "ast_hash": "97eb677c2e95843ed86140fcfc88fca5",
+    "semantic_hash": "97eb677c2e95843ed86140fcfc88fca5"
+  },
+  "docs/agent-rules/apple.md": {
+    "mtime": 1782441011.2913811,
+    "ast_hash": "701b6d31e3eb445a52fe0cc771ee6d1b",
+    "semantic_hash": "701b6d31e3eb445a52fe0cc771ee6d1b"
+  },
+  "docs/agent-rules/ci-release.md": {
+    "mtime": 1778273401.3157392,
+    "ast_hash": "c109978576adac6e7febe0da2e2a2354",
+    "semantic_hash": "c109978576adac6e7febe0da2e2a2354"
+  },
+  "docs/agent-rules/cross-platform.md": {
+    "mtime": 1776156172.0,
+    "ast_hash": "dd1c3e52b831647247814593e4e7478a",
+    "semantic_hash": "dd1c3e52b831647247814593e4e7478a"
+  },
+  "docs/agent-rules/diagnostics-privacy.md": {
+    "mtime": 1778273061.618517,
+    "ast_hash": "c01e438e95f220f33a544a4f88c54716",
+    "semantic_hash": "c01e438e95f220f33a544a4f88c54716"
+  },
+  "docs/agent-rules/git-workflow.md": {
+    "mtime": 1779904441.681805,
+    "ast_hash": "5e500d664db5f13bcb168b63bc5e94a3",
+    "semantic_hash": "5e500d664db5f13bcb168b63bc5e94a3"
+  },
+  "docs/agent-rules/local-rtk.md": {
+    "mtime": 1778289032.700905,
+    "ast_hash": "fed7a21534ac7ca98906dac4a95b8a1d",
+    "semantic_hash": "fed7a21534ac7ca98906dac4a95b8a1d"
+  },
+  "docs/agent-rules/long-running-work.md": {
+    "mtime": 1778273328.5022562,
+    "ast_hash": "41f87d4a06291be90fa68a093b5bf357",
+    "semantic_hash": "41f87d4a06291be90fa68a093b5bf357"
+  },
+  "docs/agent-rules/migration-format-safety.md": {
+    "mtime": 1778273120.3005064,
+    "ast_hash": "9147fffde723e11855b3af3639f57881",
+    "semantic_hash": "9147fffde723e11855b3af3639f57881"
+  },
+  "docs/agent-rules/project_philosophy.md": {
+    "mtime": 1778272337.0796149,
+    "ast_hash": "e5b2deebbfa71bf44a505cc09d1f23a4",
+    "semantic_hash": "e5b2deebbfa71bf44a505cc09d1f23a4"
+  },
+  "docs/agent-rules/readme-rules.md": {
+    "mtime": 1778288792.014628,
+    "ast_hash": "b5d44d16c35207629463237665fc0636",
+    "semantic_hash": "b5d44d16c35207629463237665fc0636"
+  },
+  "docs/agent-rules/tauri-web.md": {
+    "mtime": 1776156172.0,
+    "ast_hash": "153c510e30988488e158869b2e0f68b7",
+    "semantic_hash": "153c510e30988488e158869b2e0f68b7"
+  },
+  "docs/agent-rules/third-party-dependencies-media-assets.md": {
+    "mtime": 1778526843.8306413,
+    "ast_hash": "4eab5fe796ebb2a585c720a46526d9a8",
+    "semantic_hash": "4eab5fe796ebb2a585c720a46526d9a8"
+  },
+  "docs/agent-rules/untrusted-input-tools.md": {
+    "mtime": 1778273360.5988696,
+    "ast_hash": "913ea5ea770bc4bec1c55958fbc362b0",
+    "semantic_hash": "913ea5ea770bc4bec1c55958fbc362b0"
+  },
+  "docs/agent-rules/user-data-permissions.md": {
+    "mtime": 1778273441.2491477,
+    "ast_hash": "7afd0139d3f2b76b0791af48e5183003",
+    "semantic_hash": "7afd0139d3f2b76b0791af48e5183003"
+  },
+  "docs/agent-rules/windows.md": {
+    "mtime": 1776156172.0,
+    "ast_hash": "7858bdd921ff7ceb7065c40ccddccd15",
+    "semantic_hash": "7858bdd921ff7ceb7065c40ccddccd15"
+  },
+  "third_party/ffmpeg/PROVENANCE.txt": {
+    "mtime": 1777033845.7813025,
+    "ast_hash": "7364c663a5f0c51e8d277292ddfdf3a2",
+    "semantic_hash": "7364c663a5f0c51e8d277292ddfdf3a2"
+  },
+  "Sources/App/Resources/AppHeaderIcon.png": {
+    "mtime": 1773946312.6697605,
+    "ast_hash": "5cac35f2df5e5f0eb38a45da10660da1",
+    "semantic_hash": "5cac35f2df5e5f0eb38a45da10660da1"
+  },
+  "Sources/App/Resources/JohnKennethEasterEgg.jpeg": {
+    "mtime": 1773946312.6699908,
+    "ast_hash": "c29a5fa77a63b803c2b4544469d2f5fb",
+    "semantic_hash": "c29a5fa77a63b803c2b4544469d2f5fb"
+  },
+  "docs/readme-assets/main-window.png": {
+    "mtime": 1778296622.957163,
+    "ast_hash": "4827e9d40501a4589635e8025d8721f5",
+    "semantic_hash": "4827e9d40501a4589635e8025d8721f5"
+  },
+  "docs/readme-assets/render-in-progress.png": {
+    "mtime": 1778297312.0485508,
+    "ast_hash": "a8c6675294ab2a0d00c11f9683be9d5c",
+    "semantic_hash": "a8c6675294ab2a0d00c11f9683be9d5c"
+  }
+}
