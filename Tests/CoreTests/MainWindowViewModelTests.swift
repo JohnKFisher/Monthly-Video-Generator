@@ -278,7 +278,7 @@ final class MainWindowViewModelTests: XCTestCase {
             !viewModel.isRendering && !viewModel.lastOutputPath.isEmpty
         }
 
-        let reportURL = directory.appendingPathComponent("No JSON.json")
+        let reportURL = directory.appendingPathComponent("No JSON-diagnostics.json")
         XCTAssertFalse(FileManager.default.fileExists(atPath: reportURL.path))
     }
 
@@ -302,11 +302,11 @@ final class MainWindowViewModelTests: XCTestCase {
             !viewModel.isRendering && !viewModel.lastOutputPath.isEmpty
         }
 
-        let reportURL = directory.appendingPathComponent("With JSON.json")
+        let reportURL = directory.appendingPathComponent("With JSON-diagnostics.json")
         XCTAssertTrue(FileManager.default.fileExists(atPath: reportURL.path))
     }
 
-    func testDiagnosticsJSONWriteFailureAddsWarning() async throws {
+    func testDiagnosticsJSONUsesCollisionSafeFilename() async throws {
         let coordinator = RenderCoordinatorSpy(preparation: makePreparation())
         let viewModel = makeViewModel(
             coordinator: coordinator,
@@ -318,24 +318,23 @@ final class MainWindowViewModelTests: XCTestCase {
         viewModel.sourceMode = .folder
         viewModel.selectedFolderURL = directory
         viewModel.outputDirectoryURL = directory
-        viewModel.outputFilename = "Diagnostics Failure"
+        viewModel.outputFilename = "Diagnostics Collision"
         viewModel.writeDiagnosticsLog = true
-        try FileManager.default.createDirectory(
-            at: directory.appendingPathComponent("Diagnostics Failure.json"),
-            withIntermediateDirectories: false
+        try "{}".write(
+            to: directory.appendingPathComponent("Diagnostics Collision-diagnostics.json"),
+            atomically: true,
+            encoding: .utf8
         )
 
         viewModel.startRender()
-        await waitUntil(message: "Timed out waiting for diagnostics failure render.") {
+        await waitUntil(message: "Timed out waiting for diagnostics collision render.") {
             !viewModel.isRendering && !viewModel.lastOutputPath.isEmpty
         }
 
-        XCTAssertTrue(
-            viewModel.warnings.contains {
-                $0.contains("Diagnostics JSON report could not be written") &&
-                    $0.contains("Diagnostics Failure.json")
-            }
-        )
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: directory.appendingPathComponent("Diagnostics Collision-diagnostics-2.json").path
+        ))
+        XCTAssertFalse(viewModel.warnings.contains { $0.contains("Diagnostics JSON report could not be written") })
     }
 
     func testQueuedRenderWithDiagnosticsOffDoesNotWriteSidecarJSON() async throws {
@@ -359,7 +358,7 @@ final class MainWindowViewModelTests: XCTestCase {
             !viewModel.isRendering && viewModel.queuedRenderJobs.first?.state == .completed
         }
 
-        let reportURL = directory.appendingPathComponent("Queued No JSON.json")
+        let reportURL = directory.appendingPathComponent("Queued No JSON-diagnostics.json")
         XCTAssertFalse(FileManager.default.fileExists(atPath: reportURL.path))
     }
 
@@ -384,7 +383,7 @@ final class MainWindowViewModelTests: XCTestCase {
             !viewModel.isRendering && viewModel.queuedRenderJobs.first?.state == .completed
         }
 
-        let reportURL = directory.appendingPathComponent("Queued With JSON.json")
+        let reportURL = directory.appendingPathComponent("Queued With JSON-diagnostics.json")
         XCTAssertTrue(FileManager.default.fileExists(atPath: reportURL.path))
     }
 

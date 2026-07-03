@@ -8,7 +8,7 @@ CUSTOM_KEY_PREFIX="com.jkfisher.monthlyvideogenerator."
 usage() {
   cat <<'USAGE'
 Usage:
-  ./scripts/show_metadata.sh [--all] [--ffprobe-only] [--json] <file.mp4>
+  ./scripts/show_metadata.sh [--all] [--full-paths] [--ffprobe-only] [--json] <file.mp4>
 
 Examples:
   ./scripts/show_metadata.sh "/path/to/video.mp4"
@@ -17,6 +17,7 @@ Examples:
 Notes:
   - Prefers exiftool when available because it shows QuickTime Keys (`mdta`) tags clearly.
   - Default exiftool output is focused on file info plus metadata namespaces that are most relevant for Plex and post-export inspection.
+  - Default output omits the containing directory. Use --full-paths, --all, or --json only when full path disclosure is appropriate.
   - App-specific custom keys are surfaced from ffprobe under a [CustomKeys] section.
   - Final MP4 exports with embedded chapters print a [Chapters] section with start/end/title values.
   - Falls back to ffprobe JSON if exiftool is unavailable or --ffprobe-only is used.
@@ -128,6 +129,7 @@ print_chapters() {
 
 prefer_ffprobe=0
 show_all=0
+show_full_paths=0
 input_path=""
 
 while [[ $# -gt 0 ]]; do
@@ -142,6 +144,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --all)
       show_all=1
+      shift
+      ;;
+    --full-paths)
+      show_full_paths=1
       shift
       ;;
     -h|--help)
@@ -184,20 +190,23 @@ if [[ $prefer_ffprobe -eq 0 ]] && command -v exiftool >/dev/null 2>&1; then
   if [[ $show_all -eq 1 ]]; then
     exiftool -G1 -a -s "$input_path"
   else
-    exiftool \
-      -G1 \
-      -a \
-      -s \
-      -System:FileName \
-      -System:Directory \
-      -File:FileType \
-      -File:MIMEType \
-      -QuickTime:CreateDate \
-      -QuickTime:ModifyDate \
-      -Keys:All \
-      -ItemList:All \
-      -UserData:All \
-      "$input_path"
+    exiftool_args=(
+      -G1
+      -a
+      -s
+      -System:FileName
+      -File:FileType
+      -File:MIMEType
+      -QuickTime:CreateDate
+      -QuickTime:ModifyDate
+      -Keys:All
+      -ItemList:All
+      -UserData:All
+    )
+    if [[ $show_full_paths -eq 1 ]]; then
+      exiftool_args+=(-System:Directory)
+    fi
+    exiftool "${exiftool_args[@]}" "$input_path"
   fi
   if [[ -n "$FFPROBE_BIN" ]]; then
     print_custom_keys "$FFPROBE_BIN"

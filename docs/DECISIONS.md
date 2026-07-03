@@ -1,5 +1,10 @@
 # Monthly Video Generator Decision Log
 
+## 2026-07-02
+
+- Decision: Prepare the next iteration as a revamp/repositioning rather than a continuation of the current public identity. Rationale: the app will reset version numbering, move toward Sidelark Labs positioning, and eventually use `com.sidelarklabs.*` identifiers where identity changes are safe to make with an explicit migration plan. Status: approved.
+- Decision: Defer generated video-description copy and existing embedded metadata namespace changes to the revamp instead of changing them piecemeal during policy-alignment cleanup. Rationale: exported metadata and default copy can affect existing tooling and user expectations, so they should change alongside the broader rename/repositioning work. Status: approved.
+
 ## 2026-04-20
 
 - Decision: Treat the render, color, HDR, and final export pipeline as protected project behavior during repo modernization. Rationale: the app's core value is reliable output quality, and alignment work must not casually disturb hard-won render behavior. Status: approved.

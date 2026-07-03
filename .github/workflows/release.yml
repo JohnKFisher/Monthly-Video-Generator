@@ -32,8 +32,8 @@ jobs:
           BUILD_NUMBER="$(tr -d '[:space:]' < BUILD_NUMBER)"
           echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
           echo "BUILD_NUMBER=${BUILD_NUMBER}" >> "$GITHUB_ENV"
-          echo "RELEASE_TAG=v${VERSION}" >> "$GITHUB_ENV"
-          echo "RELEASE_NAME=Monthly Video Generator ${VERSION}" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=v${VERSION}-build-${BUILD_NUMBER}" >> "$GITHUB_ENV"
+          echo "RELEASE_NAME=Monthly Video Generator ${VERSION} (${BUILD_NUMBER})" >> "$GITHUB_ENV"
           echo "DMG_PATH=dist/Monthly-Video-Generator-v${VERSION}-build-${BUILD_NUMBER}-macOS-universal.dmg" >> "$GITHUB_ENV"
 
       - name: Build package
@@ -51,26 +51,50 @@ jobs:
       - name: Generate release notes
         run: |
           NOTES_FILE="$RUNNER_TEMP/release-notes.md"
-          PREVIOUS_TAG="$(git tag --sort=-version:refname | grep -Fxv "$RELEASE_TAG" | head -n 1 || true)"
-          if [[ -n "$PREVIOUS_TAG" ]]; then
-            RANGE="${PREVIOUS_TAG}..HEAD"
-            HEADER="Changes since ${PREVIOUS_TAG}"
-          else
-            RANGE="HEAD"
-            HEADER="Initial release"
+          CHANGELOG_FILE="docs/WORKING_CHANGELOG.md"
+          if [[ ! -f "$CHANGELOG_FILE" ]]; then
+            echo "Missing release-note source: $CHANGELOG_FILE" >&2
+            exit 1
+          fi
+
+          NOTES_BODY="$(
+            awk '
+              /^## / {
+                if ($0 == "## Unreleased") {
+                  in_unreleased = 1
+                  seen_unreleased = 1
+                  skip_section = 0
+                  next
+                }
+                if (seen_unreleased) {
+                  exit
+                }
+              }
+              in_unreleased && /^### Internal \/ Maintenance/ {
+                skip_section = 1
+                next
+              }
+              in_unreleased && /^### / {
+                skip_section = 0
+                next
+              }
+              in_unreleased && !skip_section && /^- / {
+                print
+              }
+            ' "$CHANGELOG_FILE"
+          )"
+
+          if [[ -z "$NOTES_BODY" ]]; then
+            echo "No public Unreleased release notes found in $CHANGELOG_FILE" >&2
+            exit 1
           fi
 
           {
             echo "# ${RELEASE_NAME}"
             echo
-            echo "${HEADER}"
+            echo "Changes from docs/WORKING_CHANGELOG.md"
             echo
-            COMMITS="$(git log --format='%s' ${RANGE} | grep -viE '^(prepare release|bump version|bump build)' || true)"
-            if [[ -n "$COMMITS" ]]; then
-              printf '%s\n' "$COMMITS" | sed 's/^/- /'
-            else
-              echo "- Packaging and repo-alignment updates for this release."
-            fi
+            printf '%s\n' "$NOTES_BODY"
             echo
             echo "Distribution note: this build is ad-hoc signed for local testing and is not notarized. If macOS blocks launch, use Finder Open or System Settings > Privacy & Security > Open Anyway."
           } > "$NOTES_FILE"
@@ -82,8 +106,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release edit "$RELEASE_TAG" --title "$RELEASE_NAME" --notes-file "$RELEASE_NOTES_FILE"
-            gh release upload "$RELEASE_TAG" "$DMG_PATH" --clobber
-          else
-            gh release create "$RELEASE_TAG" "$DMG_PATH" --title "$RELEASE_NAME" --notes-file "$RELEASE_NOTES_FILE"
+            echo "Release ${RELEASE_TAG} already exists. Refusing to overwrite published release notes or artifacts." >&2
+            exit 1
           fi
+          gh release create "$RELEASE_TAG" "$DMG_PATH" --title "$RELEASE_NAME" --notes-file "$RELEASE_NOTES_FILE"

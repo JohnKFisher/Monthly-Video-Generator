@@ -21,14 +21,14 @@ public enum PhotoMaterializerError: LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case let .missingAsset(identifier):
-            return "Photo asset not found: \(identifier)"
-        case let .noImageData(identifier):
-            return "Unable to read image data for asset: \(identifier)"
-        case let .noVideoURL(identifier):
-            return "Unable to materialize video URL for asset: \(identifier)"
-        case let .noVideoResource(identifier):
-            return "Unable to find a playable video resource for asset: \(identifier)"
+        case .missingAsset:
+            return "A selected Photos item could not be found. Refresh the source selection and try again."
+        case .noImageData:
+            return "Unable to read image data for a selected Photos item."
+        case .noVideoURL:
+            return "Unable to materialize a playable video URL for a selected Photos item."
+        case .noVideoResource:
+            return "Unable to find a playable video resource for a selected Photos item."
         }
     }
 }

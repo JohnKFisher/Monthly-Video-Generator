@@ -5,9 +5,9 @@ Current version/build:
 - Latest checked-in build identity: `220`
 
 Current overall status:
-- Feature complete for the intended job and effectively in maintenance mode.
-- The app is ready to use for folder-based and Apple Photos-based monthly video exports.
-- Future work is expected to be tweaks, UX polish, reliability hardening, and small workflow refinements rather than major scope expansion.
+- The current app is ready to use for folder-based and Apple Photos-based monthly video exports.
+- A larger revamp/repositioning is expected next, including version reset work, Sidelark Labs identity cleanup, and user-facing copy cleanup.
+- Until that revamp lands, treat render/color/HDR/output behavior as protected and keep changes small.
 
 What works now:
 - Local-only macOS app workflow with no telemetry or cloud requirement.
@@ -23,7 +23,8 @@ What works now:
 - Plex/Infuse-oriented HDR HEVC exports with the current bundled FFmpeg/ffprobe packaging path and mixed-cadence progressive timing; Smart video sections use standard source-fps buckets capped at 60 fps for Apple TV compatibility.
 - App-owned temporary render and Photos materialization files are cleaned up more aggressively, and resumable HDR checkpoint retention is off by default with an opt-in setting.
 - Packaged universal app builds that prefer native Apple Silicon execution.
-- About window with copyright credit and a link to the public GitHub repository.
+- About window with current app identity and repository link. This is scheduled
+  for Sidelark Labs credit/link alignment during the policy cleanup.
 
 Known limitations and trust warnings:
 - Large HDR exports can still take a long time and use substantial CPU, memory, disk, and temporary storage.
@@ -32,7 +33,9 @@ Known limitations and trust warnings:
 - Mixed-cadence HDR outputs should be checked in Plex/Infuse for direct-play behavior, seeking, and smooth motion around title cards and transitions after timing-policy changes.
 - The still-image path is intentionally conservative and can be slower than a more aggressive implementation.
 - The HDR recovery/resume path exists, but checkpoint retention must be turned on in Settings before a paused or failed HDR render can be resumed.
-- Local packaged builds are ad-hoc signed by default. Developer ID release builds now have a documented path for signing the app and DMG, submitting to Apple notarization, and stapling the accepted ticket.
+- Local packaged builds are ad-hoc signed by default. Public distribution should
+  stay honest about signing/notarization state and should not overwrite an
+  already-published release artifact.
 
 Setup/runtime requirements:
 - macOS 15-class environment for the current SwiftPM/app workflow.
@@ -42,6 +45,9 @@ Setup/runtime requirements:
 - Use `./scripts/test.sh` for SwiftPM tests so the run gets a scratch path and isolated home outside any polluted `.build/out` tree.
 
 Recommended next priorities:
+- Complete the policy-alignment cleanup captured in
+  `docs/AGENT_POLICY_ALIGNMENT_REVIEW.md`, including the revamp follow-ups for
+  Sidelark Labs identifiers and neutral generated video-description copy.
 - Keep manual smoke checks around real exports whenever a meaningful render or packaging change lands.
 - Before any public packaged release, repeat a packaged-app launch plus representative folder, Photos month/year, Photos album, and full-year queue export checks against real media.
 - Keep release signing/notarization credentials in Keychain or CI secrets only; do not commit Apple credentials or app-specific passwords.

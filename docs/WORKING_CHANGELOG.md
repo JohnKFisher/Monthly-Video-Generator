@@ -31,10 +31,3 @@ Internal notes for building public-facing changelogs. Keep entries understandabl
 ### Reliability / Data Safety
 - Added focused coverage for output filename collision previews, full-year queue scan cancellation, stale album refreshes, and diagnostics report write warnings.
 - The app now removes app-owned temporary render and Photos files more aggressively, and resumable HDR checkpoints are opt-in so normal renders keep more disk space free. [public candidate]
-
-### Internal / Maintenance
-- Clarified source-build requirements, scratch-path test recovery, current release-status truth, and the canonical `docs/WORKING_CHANGELOG.md` filename for future agent work.
-- Fixed packaged app assembly so universal builds preserve separate architecture slices before combining them, and made bundled-tool architecture validation match the `lipo -archs` output used by current Xcode tools.
-- Added Developer ID disk-image signing support to the DMG packaging script so notarized release artifacts can pass Gatekeeper assessment cleanly.
-- Made the packaged-app build script choose an installed full Xcode developer directory when the machine is currently pointed at Command Line Tools.
-- Added a test wrapper that runs SwiftPM from a scratch path outside the repo so stale `.build/out` metadata does not keep breaking test runs.

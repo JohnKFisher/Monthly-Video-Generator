@@ -11,8 +11,17 @@ final class ManualStillPipelineInspectionTests: XCTestCase {
             throw XCTSkip("Set RUN_MANUAL_STILL_PIPELINE_INSPECTION=1 to run manual still pipeline inspection.")
         }
 
-        let sourceURL = URL(fileURLWithPath: "/Users/jkfisher/Desktop/VideoTestFolder/VideoTest - 4 of 21.jpeg")
-        let finalExportURL = URL(fileURLWithPath: "/Users/jkfisher/Movies/Monthly Video Generator/Family Videos - S2026E0399 - March 2026-v4.mp4")
+        guard
+            let sourcePath = ProcessInfo.processInfo.environment["MANUAL_STILL_SOURCE_PATH"],
+            !sourcePath.isEmpty,
+            let finalExportPath = ProcessInfo.processInfo.environment["MANUAL_STILL_FINAL_EXPORT_PATH"],
+            !finalExportPath.isEmpty
+        else {
+            throw XCTSkip("Set MANUAL_STILL_SOURCE_PATH and MANUAL_STILL_FINAL_EXPORT_PATH to run manual still pipeline inspection.")
+        }
+
+        let sourceURL = URL(fileURLWithPath: sourcePath)
+        let finalExportURL = URL(fileURLWithPath: finalExportPath)
         let outputDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("MonthlyVideoGeneratorStillInspection", isDirectory: true)
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)

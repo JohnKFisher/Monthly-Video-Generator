@@ -7,11 +7,13 @@ import AppKit
 enum AppMetadata {
     private struct AppLinks: Decodable {
         let repositoryURL: String?
+        let sidelarkLabsURL: String?
+        let licenseURL: String?
+        let attributionsURL: String?
     }
 
     static let appName = "Monthly Video Generator"
     static let headerIconResourceName = "AppHeaderIcon"
-    static let easterEggImageResourceName = "JohnKennethEasterEgg"
     static let appLinksResourceName = "AppLinks"
     private static let appResourceBundleName = "MonthlyVideoGenerator_MonthlyVideoGeneratorApp.bundle"
 
@@ -40,18 +42,34 @@ enum AppMetadata {
     }
 
     static var repositoryURL: URL? {
+        appLinkURL(\.repositoryURL)
+    }
+
+    static var sidelarkLabsURL: URL? {
+        appLinkURL(\.sidelarkLabsURL)
+    }
+
+    static var licenseURL: URL? {
+        appLinkURL(\.licenseURL)
+    }
+
+    static var attributionsURL: URL? {
+        appLinkURL(\.attributionsURL)
+    }
+
+    private static func appLinkURL(_ keyPath: KeyPath<AppLinks, String?>) -> URL? {
         guard
             let bundle = appResourceBundle,
             let url = bundle.url(forResource: appLinksResourceName, withExtension: "json"),
             let data = try? Data(contentsOf: url),
             let links = try? JSONDecoder().decode(AppLinks.self, from: data),
-            let repositoryURL = links.repositoryURL?.trimmingCharacters(in: .whitespacesAndNewlines),
-            !repositoryURL.isEmpty
+            let link = links[keyPath: keyPath]?.trimmingCharacters(in: .whitespacesAndNewlines),
+            !link.isEmpty
         else {
             return nil
         }
 
-        return URL(string: repositoryURL)
+        return URL(string: link)
     }
 
     #if canImport(AppKit)
@@ -90,9 +108,5 @@ enum AppMetadata {
         bundledImage(named: headerIconResourceName, extension: "png")
     }()
 
-    @MainActor
-    static let easterEggImage: NSImage? = {
-        bundledImage(named: easterEggImageResourceName, extension: "jpeg")
-    }()
     #endif
 }

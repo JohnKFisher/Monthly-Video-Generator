@@ -31,8 +31,8 @@ public enum PhotoKitDiscoveryError: LocalizedError {
         switch self {
         case let .unauthorized(status):
             return "Photo library access is not authorized (status: \(status.rawValue))."
-        case let .albumNotFound(localIdentifier):
-            return "The selected Photos album could not be found (\(localIdentifier))."
+        case .albumNotFound:
+            return "The selected Photos album could not be found. Choose the album again in Apple Photos mode."
         }
     }
 }

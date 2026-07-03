@@ -6,6 +6,7 @@ This project ships a bundled FFmpeg toolchain for HDR exports.
 
 - Location in repo: `third_party/ffmpeg/darwin-arm64/` and `third_party/ffmpeg/darwin-x64/`
 - Location in packaged app: `Monthly Video Generator.app/Contents/Resources/FFmpeg/`
+- Machine-readable attribution source: `docs/ATTRIBUTIONS.md`
 
 ### Acquisition
 
@@ -37,11 +38,21 @@ committed slices used by normal release packaging.
 
 ### Licensing
 
-Bundled binaries may include GPL components depending on the selected distribution.
-Validate your chosen distribution's licensing terms before redistribution.
+The committed binaries report GPL-enabled FFmpeg build configurations, and the
+x64 slice also reports `--enable-version3`. Treat packaged app redistribution as
+requiring GPL-compatible FFmpeg distribution obligations until a fresh binary
+license audit proves otherwise. Do not ship public release artifacts without
+including FFmpeg notices/source-offer handling appropriate to the exact bundled
+binaries and linked libraries.
+
+`docs/ATTRIBUTIONS.md` is the source of record for attribution metadata.
 
 ### Provenance
 
 Provenance metadata is recorded at:
 
 - `third_party/ffmpeg/PROVENANCE.txt`
+
+Attribution metadata is recorded at:
+
+- `docs/ATTRIBUTIONS.md`

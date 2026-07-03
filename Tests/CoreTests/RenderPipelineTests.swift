@@ -11,9 +11,9 @@ final class RenderPipelineTests: XCTestCase {
         XCTAssertEqual(scope.description, "Album: Family")
     }
 
-    func testPhotosScopeAlbumDescriptionFallsBackToIdentifier() {
+    func testPhotosScopeAlbumDescriptionFallsBackToGenericLabel() {
         let scope = PhotosScope.album(localIdentifier: "abc123", title: nil)
-        XCTAssertEqual(scope.description, "Album (id: abc123)")
+        XCTAssertEqual(scope.description, "Selected Photos album")
     }
 
     func testPhotosScopeAlbumCodableRoundTrip() throws {

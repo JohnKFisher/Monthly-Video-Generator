@@ -751,14 +751,14 @@ final class MainWindowViewModel: ObservableObject {
         guard sourceMode == .photos, selectedFrameRatePolicy == .smart else {
             return nil
         }
-        return "In Apple Photos mode, Smart fps may inspect/download selected videos before rendering so video sections can follow the right source-fps bucket."
+        return "In Apple Photos mode, Smart fps may inspect or download selected videos, including iCloud originals, before rendering so video sections can follow the right source-fps bucket."
     }
 
     var photosSmartAudioDescription: String? {
         guard sourceMode == .photos, selectedAudioLayout == .smart else {
             return nil
         }
-        return "In Apple Photos mode, Smart audio may inspect/download selected videos before rendering to choose Mono, Stereo, or 5.1."
+        return "In Apple Photos mode, Smart audio may inspect or download selected videos, including iCloud originals, before rendering to choose Mono, Stereo, or 5.1."
     }
 
     var canStartQueue: Bool {
@@ -2830,7 +2830,7 @@ final class MainWindowViewModel: ObservableObject {
                 resolvedVideoInfo: renderResult.resolvedVideoInfo,
                 presentationTimingAudits: renderResult.executionDetails?.presentationTimingAudits ?? []
             )
-            let reportURL = outputURL.deletingPathExtension().appendingPathExtension("json")
+            let reportURL = availableDiagnosticsReportURL(for: outputURL)
             do {
                 try runReportService.write(report, to: reportURL)
             } catch {
@@ -2851,6 +2851,23 @@ final class MainWindowViewModel: ObservableObject {
                 renderResult: renderResult
             )
         }
+    }
+
+    private func availableDiagnosticsReportURL(for outputURL: URL) -> URL {
+        let directory = outputURL.deletingLastPathComponent()
+        let baseName = outputURL.deletingPathExtension().lastPathComponent + "-diagnostics"
+        let fileManager = FileManager.default
+        var candidate = directory.appendingPathComponent(baseName).appendingPathExtension("json")
+        var suffix = 2
+
+        while fileManager.fileExists(atPath: candidate.path) {
+            candidate = directory
+                .appendingPathComponent("\(baseName)-\(suffix)")
+                .appendingPathExtension("json")
+            suffix += 1
+        }
+
+        return candidate
     }
 
     private func appendWarning(_ warning: String) {
@@ -3578,7 +3595,7 @@ final class MainWindowViewModel: ObservableObject {
             }
             photoAlbums = []
             selectedPhotoAlbumID = ""
-            photoAlbumsStatusMessage = "Allow Photos access to load albums."
+            photoAlbumsStatusMessage = "Photos access is needed for Apple Photos exports. Folder exports still work. Allow access in System Settings > Privacy & Security > Photos, then refresh albums."
             return
         }
 

@@ -401,7 +401,7 @@ cat > "$CONTENTS_DIR/Info.plist" <<PLIST
   <key>NSHighResolutionCapable</key>
   <true/>
   <key>NSPhotoLibraryUsageDescription</key>
-  <string>Monthly Video Generator needs access to your photos to build month-based slideshows.</string>
+  <string>Monthly Video Generator needs Photos access to build selected month or album exports from your photos and videos.</string>
 </dict>
 </plist>
 PLIST

@@ -126,7 +126,7 @@ Important behavior already encoded here:
 
 Relevant code:
 
-- [Sources/Core/Models/MediaModels.swift](/Users/jkfisher/Documents/Coding/Monthly%20Video%20Generator/Sources/Core/Models/MediaModels.swift)
+- [Sources/Core/Models/MediaModels.swift](../Sources/Core/Models/MediaModels.swift)
 
 ## Proven Normalization Rules In This Repo
 
@@ -250,7 +250,7 @@ Lesson:
 
 Relevant code:
 
-- [Sources/Core/Render/FFmpeg/FFmpegCommandBuilder.swift](/Users/jkfisher/Documents/Coding/Monthly%20Video%20Generator/Sources/Core/Render/FFmpeg/FFmpegCommandBuilder.swift)
+- [Sources/Core/Render/FFmpeg/FFmpegCommandBuilder.swift](../Sources/Core/Render/FFmpeg/FFmpegCommandBuilder.swift)
 
 ## Display P3 Is Not "Basically BT.709"
 
@@ -284,7 +284,7 @@ For future apps:
 
 Relevant code:
 
-- [Sources/Core/Render/StillImageClipFactory.swift](/Users/jkfisher/Documents/Coding/Monthly%20Video%20Generator/Sources/Core/Render/StillImageClipFactory.swift)
+- [Sources/Core/Render/StillImageClipFactory.swift](../Sources/Core/Render/StillImageClipFactory.swift)
 
 ## Missing Or Bad Source Tags Are Common
 
@@ -353,7 +353,7 @@ Practical rules:
 
 Relevant code:
 
-- [Sources/Core/Render/FFmpeg/FFmpegTypes.swift](/Users/jkfisher/Documents/Coding/Monthly%20Video%20Generator/Sources/Core/Render/FFmpeg/FFmpegTypes.swift)
+- [Sources/Core/Render/FFmpeg/FFmpegTypes.swift](../Sources/Core/Render/FFmpeg/FFmpegTypes.swift)
 
 ## What Actually Went Wrong Historically
 
@@ -487,13 +487,13 @@ These should still be treated as starting defaults, not universal laws.
 
 ## Where To Look In This Repo
 
-- [docs/DECISIONS.md](/Users/jkfisher/Documents/Coding/Monthly%20Video%20Generator/docs/DECISIONS.md)
-- [docs/WHERE_WE_STAND.md](/Users/jkfisher/Documents/Coding/Monthly%20Video%20Generator/docs/WHERE_WE_STAND.md)
-- [Sources/Core/Models/MediaModels.swift](/Users/jkfisher/Documents/Coding/Monthly%20Video%20Generator/Sources/Core/Models/MediaModels.swift)
-- [Sources/Core/Render/FFmpeg/FFmpegCommandBuilder.swift](/Users/jkfisher/Documents/Coding/Monthly%20Video%20Generator/Sources/Core/Render/FFmpeg/FFmpegCommandBuilder.swift)
-- [Sources/Core/Render/FFmpeg/FFmpegTypes.swift](/Users/jkfisher/Documents/Coding/Monthly%20Video%20Generator/Sources/Core/Render/FFmpeg/FFmpegTypes.swift)
-- [Sources/Core/Render/FFmpeg/FFmpegProgressivePipeline.swift](/Users/jkfisher/Documents/Coding/Monthly%20Video%20Generator/Sources/Core/Render/FFmpeg/FFmpegProgressivePipeline.swift)
-- [Sources/Core/Render/StillImageClipFactory.swift](/Users/jkfisher/Documents/Coding/Monthly%20Video%20Generator/Sources/Core/Render/StillImageClipFactory.swift)
+- [docs/DECISIONS.md](DECISIONS.md)
+- [docs/WHERE_WE_STAND.md](WHERE_WE_STAND.md)
+- [Sources/Core/Models/MediaModels.swift](../Sources/Core/Models/MediaModels.swift)
+- [Sources/Core/Render/FFmpeg/FFmpegCommandBuilder.swift](../Sources/Core/Render/FFmpeg/FFmpegCommandBuilder.swift)
+- [Sources/Core/Render/FFmpeg/FFmpegTypes.swift](../Sources/Core/Render/FFmpeg/FFmpegTypes.swift)
+- [Sources/Core/Render/FFmpeg/FFmpegProgressivePipeline.swift](../Sources/Core/Render/FFmpeg/FFmpegProgressivePipeline.swift)
+- [Sources/Core/Render/StillImageClipFactory.swift](../Sources/Core/Render/StillImageClipFactory.swift)
 
 ## Bottom Line
 

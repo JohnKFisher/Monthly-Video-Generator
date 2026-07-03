@@ -423,6 +423,8 @@ struct MainWindowAdvancedExportSettingsView: View {
                     .disabled(!viewModel.canResetExportSettings)
                 }
             }
+
+            MainWindowCaption(text: "Diagnostics stay local and may include file paths, filenames, media titles, Photos details, FFmpeg output, and render settings. Keep them private unless sharing for support.")
         }
         .padding(.top, 4)
     }

@@ -76,6 +76,8 @@ struct MainWindowInputPane: View {
             case .album:
                 photosAlbumControls
             }
+
+            MainWindowCaption(text: "Apple Photos exports may inspect selected items and download iCloud originals needed for the render.")
         }
     }
 

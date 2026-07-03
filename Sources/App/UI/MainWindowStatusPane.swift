@@ -69,19 +69,12 @@ struct MainWindowLightTablePane: View {
             ) {
                 MainWindowStatusMetric(title: "Elapsed", value: viewModel.statusElapsedLabel)
                 MainWindowStatusMetric(title: "Mode", value: viewModel.statusQueueLabel)
-                if !viewModel.currentArtifactSizeLabel.isEmpty {
-                    MainWindowStatusMetric(title: "Artifact", value: viewModel.currentArtifactSizeLabel)
-                }
             }
 
             lightTableStatusBlock
 
             if viewModel.canRevealLastRenderedOutput {
                 MainWindowLastExportSummary(viewModel: viewModel)
-            }
-
-            if !viewModel.lastDiagnosticsPath.isEmpty {
-                MainWindowStatusLine(title: "Diagnostics", value: viewModel.lastDiagnosticsPath)
             }
 
             Spacer(minLength: 0)
@@ -266,12 +259,6 @@ struct MainWindowStatusPane: View {
                     MainWindowStatusMetric(title: "Progress", value: viewModel.statusProgressLabel)
                     MainWindowStatusMetric(title: "Elapsed", value: viewModel.statusElapsedLabel)
                     MainWindowStatusMetric(title: "Queue", value: viewModel.statusQueueLabel)
-                    if !viewModel.currentArtifactSizeLabel.isEmpty {
-                        MainWindowStatusMetric(title: "Artifact Size", value: viewModel.currentArtifactSizeLabel)
-                    }
-                    if !viewModel.currentArtifactLabel.isEmpty {
-                        MainWindowStatusMetric(title: "Artifact", value: viewModel.currentArtifactLabel)
-                    }
                 }
 
                 Text(viewModel.statusMessage)
@@ -279,22 +266,10 @@ struct MainWindowStatusPane: View {
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                if !viewModel.statusOutputLabel.isEmpty {
-                    MainWindowStatusLine(title: "Target", value: viewModel.statusOutputLabel)
-                }
-
                 MainWindowLiveSnapshotView(viewModel: viewModel)
 
                 if viewModel.canRevealLastRenderedOutput {
                     MainWindowLastExportSummary(viewModel: viewModel)
-                }
-
-                if !viewModel.lastDiagnosticsPath.isEmpty {
-                    MainWindowStatusLine(title: "Diagnostics", value: viewModel.lastDiagnosticsPath)
-                }
-
-                if !viewModel.lastBackendSummary.isEmpty {
-                    MainWindowStatusLine(title: "Backend", value: viewModel.lastBackendSummary)
                 }
 
                 Divider()
@@ -487,9 +462,6 @@ private struct MainWindowLiveSnapshotView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
 
-            if !viewModel.currentArtifactPath.isEmpty {
-                MainWindowStatusLine(title: "Snapshot Source", value: viewModel.currentArtifactPath)
-            }
         }
     }
 }

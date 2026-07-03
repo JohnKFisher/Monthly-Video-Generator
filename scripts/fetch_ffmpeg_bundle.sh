@@ -24,9 +24,10 @@ Usage:
 
 Notes:
   - FFMPEG_BUNDLE_* is required.
-  - Use FFPROBE_BUNDLE_* for strict version matching from the same source.
-  - If FFPROBE_BUNDLE_URL is not provided, script tries to find ffprobe in the ffmpeg payload,
-    then falls back to ffprobe from PATH.
+  - If FFPROBE_BUNDLE_URL is provided, FFPROBE_BUNDLE_SHA256 is required.
+  - If FFPROBE_BUNDLE_URL is omitted, the ffmpeg payload must contain ffprobe.
+  - The script never copies ffprobe from PATH; bundle provenance must come from
+    a pinned payload and checksum.
 USAGE
   exit 1
 fi
@@ -126,16 +127,8 @@ else
   if extract_binary_from_payload "$FFMPEG_BUNDLE_URL" "$FFMPEG_PAYLOAD" "ffprobe" "$FFPROBE_DEST"; then
     FFPROBE_SOURCE_PATH="$FFMPEG_BUNDLE_URL"
   else
-    echo "Payload has no ffprobe; falling back to PATH lookup."
-    SYSTEM_FFPROBE="$(command -v ffprobe || true)"
-    if [[ -z "$SYSTEM_FFPROBE" ]]; then
-      echo "No ffprobe found in PATH for fallback."
-      exit 1
-    fi
-    rm -f "$FFPROBE_DEST"
-    cp "$SYSTEM_FFPROBE" "$FFPROBE_DEST"
-    chmod +x "$FFPROBE_DEST"
-    FFPROBE_SOURCE_PATH="$SYSTEM_FFPROBE"
+    echo "Payload has no ffprobe. Provide FFPROBE_BUNDLE_URL and FFPROBE_BUNDLE_SHA256 for a pinned ffprobe payload."
+    exit 1
   fi
 fi
 

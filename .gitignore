@@ -4,5 +4,7 @@
 .home/
 .claude/
 dist/
+output/
 tmp/
+graphify-out/
 third_party/ffmpeg/bin/

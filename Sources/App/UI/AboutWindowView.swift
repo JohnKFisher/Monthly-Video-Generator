@@ -22,7 +22,7 @@ struct AboutWindowView: View {
                 Text("Version \(AppMetadata.versionBuildValue)")
                     .foregroundStyle(.secondary)
 
-                Text("Personal-use macOS app for local monthly video exports.")
+                Text("Local macOS app for monthly video exports.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -30,13 +30,28 @@ struct AboutWindowView: View {
             }
 
             VStack(spacing: 6) {
-                Text("Copyright © 2026 John Kenneth Fisher")
+                Text("Copyright © 2026 Sidelark Labs and John Kenneth Fisher")
                     .font(.callout)
+
+                if let sidelarkLabsURL = AppMetadata.sidelarkLabsURL {
+                    Link("Sidelark Labs", destination: sidelarkLabsURL)
+                        .font(.callout.weight(.medium))
+                }
 
                 if let repositoryURL = AppMetadata.repositoryURL {
                     Link("GitHub Repository", destination: repositoryURL)
                         .font(.callout.weight(.medium))
                 }
+
+                HStack(spacing: 12) {
+                    if let licenseURL = AppMetadata.licenseURL {
+                        Link("License", destination: licenseURL)
+                    }
+                    if let attributionsURL = AppMetadata.attributionsURL {
+                        Link("Attributions", destination: attributionsURL)
+                    }
+                }
+                .font(.callout.weight(.medium))
             }
         }
         .padding(28)

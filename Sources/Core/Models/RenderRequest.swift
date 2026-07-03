@@ -8,12 +8,12 @@ public enum PhotosScope: Equatable, Codable, Sendable, CustomStringConvertible {
         switch self {
         case let .entireLibrary(monthYear):
             return "Entire library (\(monthYear.displayLabel))"
-        case let .album(localIdentifier, title):
+        case let .album(_, title):
             let resolvedTitle = title?.trimmingCharacters(in: .whitespacesAndNewlines)
             if let resolvedTitle, !resolvedTitle.isEmpty {
                 return "Album: \(resolvedTitle)"
             }
-            return "Album (id: \(localIdentifier))"
+            return "Selected Photos album"
         }
     }
 }
