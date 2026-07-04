@@ -357,6 +357,7 @@ final class MainWindowViewModel: ObservableObject {
     @Published private(set) var photoAlbums: [PhotoAlbumSummary] = []
     @Published private(set) var isLoadingPhotoAlbums: Bool = false
     @Published private(set) var photoAlbumsStatusMessage: String = ""
+    @Published private(set) var photosAuthorizationStatus: PHAuthorizationStatus = .notDetermined
 
     @Published var outputDirectoryURL: URL
     @Published var plexShowTitle: String = MainWindowViewModel.defaultPlexShowTitle {
@@ -573,6 +574,7 @@ final class MainWindowViewModel: ObservableObject {
         self.calendar = calendar
         self.nowProvider = nowProvider
         appVersionBuildLabel = AppMetadata.versionBuildLabel
+        photosAuthorizationStatus = photoDiscovery.authorizationStatus()
 
         let launchMonthYear = Self.mostRecentlyCompletedMonthYear(
             calendar: calendar,
@@ -657,6 +659,34 @@ final class MainWindowViewModel: ObservableObject {
         !photoAlbums.isEmpty
     }
 
+    var needsPhotosAccessAction: Bool {
+        sourceMode == .photos && !isPhotosAuthorized(photosAuthorizationStatus)
+    }
+
+    var photosAccessActionTitle: String {
+        switch photosAuthorizationStatus {
+        case .notDetermined:
+            return "Allow Photos Access"
+        case .denied, .restricted:
+            return "Open Photos Settings"
+        default:
+            return "Check Photos Access"
+        }
+    }
+
+    var photosAccessStatusMessage: String {
+        switch photosAuthorizationStatus {
+        case .notDetermined:
+            return "Photos access has not been requested yet."
+        case .denied:
+            return "Photos access is denied. Folder exports still work."
+        case .restricted:
+            return "Photos access is restricted on this Mac. Folder exports still work."
+        default:
+            return ""
+        }
+    }
+
     var outputNameAutomationDescription: String {
         let baseDescription = isOutputNameAutoManaged
             ? "Auto name uses Plex TV format \(generatedOutputName())."
@@ -681,6 +711,26 @@ final class MainWindowViewModel: ObservableObject {
     func refreshPhotoAlbums() {
         Task {
             await loadPhotoAlbums(requestAuthorizationIfNeeded: true)
+        }
+    }
+
+    func requestPhotosAccess() {
+        switch photosAuthorizationStatus {
+        case .notDetermined:
+            Task {
+                let status = await requestPhotosAuthorization()
+                guard isPhotosAuthorized(status) else {
+                    return
+                }
+                photoAlbumsStatusMessage = ""
+                if sourceMode == .photos, selectedPhotosFilterMode == .album {
+                    await loadPhotoAlbums(requestAuthorizationIfNeeded: false)
+                }
+            }
+        case .denied, .restricted:
+            openPhotosPrivacySettings()
+        default:
+            photosAuthorizationStatus = photoDiscovery.authorizationStatus()
         }
     }
 
@@ -2741,13 +2791,13 @@ final class MainWindowViewModel: ObservableObject {
     }
 
     private func ensurePhotosAuthorizationIfNeeded() async throws {
-        let status = photoDiscovery.authorizationStatus()
-        if status == .authorized || status == .limited {
+        let status = refreshPhotosAuthorizationStatus()
+        if isPhotosAuthorized(status) {
             return
         }
 
-        let newStatus = await photoDiscovery.requestAuthorization()
-        guard newStatus == .authorized || newStatus == .limited else {
+        let newStatus = await requestPhotosAuthorization()
+        guard isPhotosAuthorized(newStatus) else {
             throw PhotoKitDiscoveryError.unauthorized(newStatus)
         }
     }
@@ -3582,14 +3632,14 @@ final class MainWindowViewModel: ObservableObject {
         isLoadingPhotoAlbums = true
         defer { isLoadingPhotoAlbums = false }
 
-        var status = photoDiscovery.authorizationStatus()
-        if status != .authorized && status != .limited {
+        var status = refreshPhotosAuthorizationStatus()
+        if !isPhotosAuthorized(status) {
             if requestAuthorizationIfNeeded {
-                status = await photoDiscovery.requestAuthorization()
+                status = await requestPhotosAuthorization()
             }
         }
 
-        guard status == .authorized || status == .limited else {
+        guard isPhotosAuthorized(status) else {
             guard shouldApplyPhotoAlbumLoad(generation: loadGeneration) else {
                 return
             }
@@ -3629,6 +3679,31 @@ final class MainWindowViewModel: ObservableObject {
         generation == photoAlbumLoadGeneration &&
             sourceMode == .photos &&
             selectedPhotosFilterMode == .album
+    }
+
+    private func refreshPhotosAuthorizationStatus() -> PHAuthorizationStatus {
+        let status = photoDiscovery.authorizationStatus()
+        photosAuthorizationStatus = status
+        return status
+    }
+
+    @discardableResult
+    private func requestPhotosAuthorization() async -> PHAuthorizationStatus {
+        let status = await photoDiscovery.requestAuthorization()
+        photosAuthorizationStatus = status
+        return status
+    }
+
+    private func isPhotosAuthorized(_ status: PHAuthorizationStatus) -> Bool {
+        status == .authorized || status == .limited
+    }
+
+    private func openPhotosPrivacySettings() {
+        #if canImport(AppKit)
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Photos") {
+            NSWorkspace.shared.open(url)
+        }
+        #endif
     }
 
     private func enforceHDRSelectionConstraints() {

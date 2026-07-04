@@ -70,6 +70,8 @@ struct MainWindowInputPane: View {
             .pickerStyle(.segmented)
             .frame(maxWidth: 280)
 
+            photosAccessControls
+
             switch viewModel.selectedPhotosFilterMode {
             case .monthYear:
                 photosMonthYearControls
@@ -78,6 +80,27 @@ struct MainWindowInputPane: View {
             }
 
             MainWindowCaption(text: "Apple Photos exports may inspect selected items and download iCloud originals needed for the render.")
+        }
+    }
+
+    @ViewBuilder
+    private var photosAccessControls: some View {
+        if viewModel.needsPhotosAccessAction {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    Button(viewModel.photosAccessActionTitle) {
+                        viewModel.requestPhotosAccess()
+                    }
+                    MainWindowCaption(text: viewModel.photosAccessStatusMessage)
+                }
+
+                VStack(alignment: .leading, spacing: rowSpacing) {
+                    Button(viewModel.photosAccessActionTitle) {
+                        viewModel.requestPhotosAccess()
+                    }
+                    MainWindowCaption(text: viewModel.photosAccessStatusMessage)
+                }
+            }
         }
     }
 

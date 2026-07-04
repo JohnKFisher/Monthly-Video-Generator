@@ -665,6 +665,82 @@ final class MainWindowViewModelTests: XCTestCase {
         )
     }
 
+    func testAutomaticPhotosAlbumLoadDoesNotPromptForAuthorization() async {
+        let photoDiscovery = PhotoLibraryDiscoveringSpy(
+            authorizationStatusValue: .notDetermined,
+            requestedAuthorizationStatus: .authorized,
+            albums: [PhotoAlbumSummary(localIdentifier: "album-1", title: "Vacation", assetCount: 5)]
+        )
+        let viewModel = makeViewModel(
+            coordinator: RenderCoordinatorSpy(preparation: makePreparation()),
+            photoDiscovery: photoDiscovery,
+            preferencesStore: makePreferencesStore()
+        )
+
+        viewModel.sourceMode = .photos
+        viewModel.selectedPhotosFilterMode = .album
+
+        await waitUntil(message: "Timed out waiting for Photos access status.") {
+            viewModel.photoAlbumsStatusMessage.contains("Photos access is needed")
+        }
+
+        XCTAssertEqual(photoDiscovery.authorizationRequestCount, 0)
+        XCTAssertTrue(viewModel.needsPhotosAccessAction)
+        XCTAssertEqual(viewModel.photosAccessActionTitle, "Allow Photos Access")
+    }
+
+    func testRequestPhotosAccessPromptsAndUpdatesStatus() async {
+        let photoDiscovery = PhotoLibraryDiscoveringSpy(
+            authorizationStatusValue: .notDetermined,
+            requestedAuthorizationStatus: .authorized
+        )
+        let viewModel = makeViewModel(
+            coordinator: RenderCoordinatorSpy(preparation: makePreparation()),
+            photoDiscovery: photoDiscovery,
+            preferencesStore: makePreferencesStore()
+        )
+
+        viewModel.sourceMode = .photos
+        XCTAssertTrue(viewModel.needsPhotosAccessAction)
+
+        viewModel.requestPhotosAccess()
+
+        await waitUntil(message: "Timed out waiting for Photos authorization request.") {
+            viewModel.photosAuthorizationStatus == .authorized
+        }
+
+        XCTAssertEqual(photoDiscovery.authorizationRequestCount, 1)
+        XCTAssertFalse(viewModel.needsPhotosAccessAction)
+    }
+
+    func testRefreshPhotoAlbumsRequestsAuthorizationWhenNeeded() async {
+        let photoDiscovery = PhotoLibraryDiscoveringSpy(
+            authorizationStatusValue: .notDetermined,
+            requestedAuthorizationStatus: .authorized,
+            albums: [PhotoAlbumSummary(localIdentifier: "album-1", title: "Vacation", assetCount: 5)]
+        )
+        let viewModel = makeViewModel(
+            coordinator: RenderCoordinatorSpy(preparation: makePreparation()),
+            photoDiscovery: photoDiscovery,
+            preferencesStore: makePreferencesStore()
+        )
+
+        viewModel.sourceMode = .photos
+        viewModel.selectedPhotosFilterMode = .album
+        await waitUntil(message: "Timed out waiting for passive Photos access status.") {
+            viewModel.photoAlbumsStatusMessage.contains("Photos access is needed")
+        }
+
+        viewModel.refreshPhotoAlbums()
+
+        await waitUntil(message: "Timed out waiting for album authorization refresh.") {
+            viewModel.selectedPhotoAlbumID == "album-1"
+        }
+
+        XCTAssertEqual(photoDiscovery.authorizationRequestCount, 1)
+        XCTAssertEqual(viewModel.photosAuthorizationStatus, .authorized)
+    }
+
     func testShowTitlePersistsAcrossLaunchesAndResetRestoresDefault() {
         let preferencesStore = makePreferencesStore()
         let initialViewModel = makeViewModel(
@@ -2616,6 +2692,7 @@ private final class PhotoLibraryDiscoveringSpy: PhotoLibraryDiscovering, @unchec
     var monthDiscoveryDelay: Duration?
     var albumDiscoveryDelay: Duration?
     private(set) var discoveredMonthYears: [MonthYear] = []
+    private(set) var authorizationRequestCount = 0
 
     init(
         authorizationStatusValue: PHAuthorizationStatus = .authorized,
@@ -2640,7 +2717,10 @@ private final class PhotoLibraryDiscoveringSpy: PhotoLibraryDiscovering, @unchec
     }
 
     func requestAuthorization() async -> PHAuthorizationStatus {
-        requestedAuthorizationStatus ?? authorizationStatusValue
+        authorizationRequestCount += 1
+        let status = requestedAuthorizationStatus ?? authorizationStatusValue
+        authorizationStatusValue = status
+        return status
     }
 
     func discover(monthYear: MonthYear, timeZone: TimeZone) async throws -> [MediaItem] {
