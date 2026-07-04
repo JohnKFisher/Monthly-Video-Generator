@@ -14,6 +14,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  NOTARY_PROFILE: monthly-video-generator-notary
 
 jobs:
   macos-release:
@@ -42,11 +43,85 @@ jobs:
       - name: Run tests
         run: ./scripts/test.sh
 
+      - name: Import Developer ID certificate
+        env:
+          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_CODESIGN_IDENTITY: ${{ secrets.MACOS_CODESIGN_IDENTITY }}
+          MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+        run: |
+          if [[ -z "$MACOS_CERTIFICATE_P12_BASE64" ]]; then
+            echo "Missing GitHub secret: MACOS_CERTIFICATE_P12_BASE64" >&2
+            exit 1
+          fi
+          if [[ -z "$MACOS_CERTIFICATE_PASSWORD" ]]; then
+            echo "Missing GitHub secret: MACOS_CERTIFICATE_PASSWORD" >&2
+            exit 1
+          fi
+          if [[ -z "$MACOS_CODESIGN_IDENTITY" ]]; then
+            echo "Missing GitHub secret: MACOS_CODESIGN_IDENTITY" >&2
+            exit 1
+          fi
+          if [[ -z "$MACOS_KEYCHAIN_PASSWORD" ]]; then
+            echo "Missing GitHub secret: MACOS_KEYCHAIN_PASSWORD" >&2
+            exit 1
+          fi
+
+          CERTIFICATE_PATH="$RUNNER_TEMP/developer-id-application.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/monthly-video-generator-signing.keychain-db"
+
+          echo "$MACOS_CERTIFICATE_P12_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          security create-keychain -p "$MACOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$MACOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -P "$MACOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$MACOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+          echo "CODESIGN_IDENTITY=$MACOS_CODESIGN_IDENTITY" >> "$GITHUB_ENV"
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+
+      - name: Store notarization credentials
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [[ -z "$APPLE_ID" ]]; then
+            echo "Missing GitHub secret: APPLE_ID" >&2
+            exit 1
+          fi
+          if [[ -z "$APPLE_APP_SPECIFIC_PASSWORD" ]]; then
+            echo "Missing GitHub secret: APPLE_APP_SPECIFIC_PASSWORD" >&2
+            exit 1
+          fi
+          if [[ -z "$APPLE_TEAM_ID" ]]; then
+            echo "Missing GitHub secret: APPLE_TEAM_ID" >&2
+            exit 1
+          fi
+
+          xcrun notarytool store-credentials "$NOTARY_PROFILE" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --keychain "$KEYCHAIN_PATH"
+
       - name: Build app bundle
         run: ./scripts/build_app.sh
 
       - name: Build DMG
         run: ./scripts/create_dmg.sh
+
+      - name: Notarize and staple DMG
+        run: |
+          xcrun notarytool submit "$DMG_PATH" \
+            --keychain-profile "$NOTARY_PROFILE" \
+            --keychain "$KEYCHAIN_PATH" \
+            --wait
+          xcrun stapler staple "$DMG_PATH"
+          xcrun stapler validate "$DMG_PATH"
+          spctl -a -vv --type open --context context:primary-signature "$DMG_PATH"
 
       - name: Generate release notes
         run: |
@@ -96,7 +171,7 @@ jobs:
             echo
             printf '%s\n' "$NOTES_BODY"
             echo
-            echo "Distribution note: this build is ad-hoc signed for local testing and is not notarized. If macOS blocks launch, use Finder Open or System Settings > Privacy & Security > Open Anyway."
+            echo "Distribution note: this macOS DMG is Developer ID signed, notarized by Apple, and stapled for Gatekeeper verification."
           } > "$NOTES_FILE"
 
           echo "RELEASE_NOTES_FILE=$NOTES_FILE" >> "$GITHUB_ENV"

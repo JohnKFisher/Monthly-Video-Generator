@@ -172,7 +172,7 @@ codesign_target() {
   local -a codesign_args=(--force --sign "$CODESIGN_IDENTITY")
 
   if [[ "$CODESIGN_IDENTITY" != "-" ]]; then
-    codesign_args+=(--options runtime)
+    codesign_args+=(--options runtime --timestamp)
   fi
 
   codesign "${codesign_args[@]}" "$target"

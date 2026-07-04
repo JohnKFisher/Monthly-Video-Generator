@@ -9,9 +9,14 @@ Sidelark Labs: https://sidelarklabs.com
 
 ## Current Status
 
-The current app is usable for the workflow it was built for. A larger
-revamp/repositioning is planned next, including version reset work and
-Sidelark Labs identity cleanup.
+This is the final build of the original, tech-heavy version of Monthly Video
+Generator. It is fully functional for the workflow it was built for: creating
+local monthly videos from folders or Apple Photos. It can be slow and
+user-unfriendly, but you are welcome to use it in the meantime.
+
+A friendlier rebuild under a new name is in development for the Mac App Store.
+Watch https://sidelarklabs.com for progress updates or to find out how to get
+the new app if it is already available.
 
 ## Features
 
@@ -25,53 +30,12 @@ Sidelark Labs identity cleanup.
 
 ## Distribution
 
-Local packaged builds are ad-hoc signed by default and are not notarized. macOS
-may require Finder Open, Control-click Open, or Privacy & Security approval for
-non-notarized local builds.
+Use the `.dmg` attached to the GitHub Release. The release DMG is built by the
+project release workflow, Developer ID signed, notarized by Apple, and stapled
+so it should open on other Macs without Gatekeeper workarounds.
 
-Public distribution should use an explicitly reviewed signing/notarization path
-and must not overwrite already-published release artifacts.
-
-## Build From Source
-
-Requirements:
-
-- macOS 15-class environment.
-- Full Xcode developer directory, not just Command Line Tools.
-- Enough free disk space for temporary render intermediates.
-
-Build the package:
-
-```bash
-swift build
-```
-
-Run tests:
-
-```bash
-./scripts/test.sh
-```
-
-Run the app from source:
-
-```bash
-swift run MonthlyVideoGeneratorApp
-```
-
-Build a packaged `.app` bundle:
-
-```bash
-./scripts/build_app.sh
-```
-
-Create a `.dmg` from that app bundle:
-
-```bash
-./scripts/create_dmg.sh
-```
-
-The packaged app build uses checked-in `VERSION` and `BUILD_NUMBER` files as
-the app version/build source of truth. The packaging scripts do not mutate them.
+Local builds made directly from source may still be ad-hoc signed unless you
+provide a Developer ID signing identity.
 
 ## More Information
 

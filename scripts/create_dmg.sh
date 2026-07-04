@@ -112,7 +112,7 @@ hdiutil create \
   "$OUTPUT_PATH" >/dev/null
 
 if [[ "$CODESIGN_IDENTITY" != "-" ]]; then
-  codesign --force --sign "$CODESIGN_IDENTITY" "$OUTPUT_PATH"
+  codesign --force --sign "$CODESIGN_IDENTITY" --timestamp "$OUTPUT_PATH"
   codesign --verify --verbose=2 "$OUTPUT_PATH" >/dev/null
 fi
 
