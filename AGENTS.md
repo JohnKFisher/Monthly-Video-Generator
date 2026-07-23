@@ -1,4 +1,4 @@
-# AGENTS.md — Universal Agent Router
+# AGENTS.md — Universal Agent Router - 7/22/26 Edition
 
 Use this file as the entry point for AI coding agents. Optimize for safety, reversibility, and low token use.
 
@@ -72,20 +72,11 @@ Platforms:
 Data/media/safety:
 `user-data-permissions.md`, `migration-format-safety.md`, `media-render-export.md`, `diagnostics-privacy.md`, `untrusted-input-tools.md`, `dependencies-assets.md`, `ai-inference.md`
 
-## Project profiles
-
-Read a project profile only when the repo/task matches it:
-
-- `docs/agent-projects/roll-call.md`
-- `docs/agent-projects/monthly-video-generator.md`
-- `docs/agent-projects/new-project-template.md`
-
-Any rule that reasonably applies to multiple projects belongs in a universal conditional file, not a project profile. Project profiles should stay small: identity, durable exceptions, protected core workflows, and pointers to existing project docs.
+Always read this project's profile, if it exists, for project-specific overrides:
+`docs/agent-projects/this-project.md`
 
 ## Verification
 
 Verification is required, but scale it to risk. Prefer the cheapest meaningful check. Batch heavyweight checks after coherent related edits. Do not rerun the same failing command without a changed hypothesis.
-
-Codex-specific SwiftPM rule for this repository: do not run `./scripts/test.sh` inside the default Codex sandbox. Request escalation for `./scripts/test.sh` on the first attempt. The sandboxed path is known to fail before tests run because SwiftPM/SwiftUI macro plugin startup hits `sandbox-exec` / plugin-server errors; trying it first wastes tokens and time. The script also refuses to run when it detects `CODEX_SANDBOX` so failures stay short if this rule is missed.
 
 Keep final reports proportional to task size and risk. For tiny/local changes, one or two sentences is enough: what changed and the narrow check performed. For normal/risky changes, report what changed, what was checked, what passed/failed, meaningful skipped checks, and known limitations.

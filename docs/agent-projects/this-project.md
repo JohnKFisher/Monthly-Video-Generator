@@ -1,12 +1,6 @@
-# Monthly Video Generator Project Profile
-
-Read this when the repository/task is Monthly Video Generator or touches video generation, rendering, export, FFmpeg/external tools, HDR/color/brightness/timing, output filenames, temp/render cleanup, source media safety, or packaged distribution.
-
-Do not read this for unrelated projects.
-
 ## Identity
 
-Monthly Video Generator is a Sidelark Labs project. Future bundle identifiers should use `com.sidelarklabs.*` unless a project decision says otherwise.
+Monthly Video Generator is an internal-only app for personal use
 
 ## Protected core areas
 
